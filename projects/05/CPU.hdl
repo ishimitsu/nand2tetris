@@ -1,0 +1,91 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/CPU.hdl
+
+/**
+ * The Hack CPU (Central Processing unit), consisting of an ALU,
+ * two registers named A and D, and a program counter named PC.
+ * The CPU is designed to fetch and execute instructions written in 
+ * the Hack machine language. In particular, functions as follows:
+ * Executes the inputted instruction according to the Hack machine 
+ * language specification. The D and A in the language specification
+ * refer to CPU-resident registers, while M refers to the external
+ * memory location addressed by A, i.e. to Memory[A]. The inM input 
+ * holds the value of this location. If the current instruction needs 
+ * to write a value to M, the value is placed in outM, the address 
+ * of the target location is placed in the addressM output, and the 
+ * writeM control bit is asserted. (When writeM==0, any value may 
+ * appear in outM). The outM and writeM outputs are combinational: 
+ * they are affected instantaneously by the execution of the current 
+ * instruction. The addressM and pc outputs are clocked: although they 
+ * are affected by the execution of the current instruction, they commit 
+ * to their new values only in the next time step. If reset==1 then the 
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
+ * than to the address resulting from executing the current instruction. 
+ */
+
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+    // Put your code here:
+
+    // Address INST 0vvvvvvvvvvvvvvv, v1..15 set to A register
+    // Calc INST    111accccccdddjjj
+    And(a=instruction[15], b=true, out=InstCalc);
+    Not(in=InstCalc, out=SetInstAddr2AReg);
+
+    // Calc INST 111accccccdddjjj
+    // a=0: Calc with A Reg value, a=1: Calc with Memory[A] value
+    And(a=instruction[12], b=InstCalc, out=CalcM);
+
+    // Set A Register
+    // Addr INST: Set 0vvvvvvvvvvvvvv
+    // Calc INST: if d0=1, set ALU Result to A Register
+    And(a=instruction[5], b=InstCalc, out=CalcRslt2AReg);
+    Mux16(a=instruction, b=outALU, sel=CalcRslt2AReg, out=inputAReg);
+    Or(a=SetInstAddr2AReg, b=CalcRslt2AReg, out=LoadAReg);
+    ARegister(in=inputAReg, load=LoadAReg, out=CurAReg, out[0..14]=addressM);
+
+    // Calc INST: if d1=1, set ALU Result to A Register
+    And(a=instruction[4], b=InstCalc, out=CalcRslt2DReg);
+    DRegister(in=outALU, load=CalcRslt2DReg, out=CurDReg);
+
+    // Calc INST: if d2=1, set ALU Result to Memory[A]
+    And(a=instruction[3], b=InstCalc, out=writeM);
+
+    Mux16(a=CurAReg, b=inM, sel=CalcM, out=outAM);
+    // c1=zx, c2=nx, c3=zy, c4=ny, c5=f, c6=no
+    ALU(x=CurDReg, y=outAM, 
+        zx=instruction[11], nx=instruction[10], 
+	zy=instruction[9], ny=instruction[8], 
+	f=instruction[7], no=instruction[6], 
+	out=outM, out=outALU, 
+	zr=outALUzr, ng=outALUng);
+
+    // jmp to Address of A Register, if j1(out<0), j2(out=0), j3(out>0)
+    And(a=instruction[2], b=InstCalc, out=J1);
+    And(a=instruction[1], b=InstCalc, out=J2);
+    And(a=instruction[0], b=InstCalc, out=J3);
+    And(a=J1, b=outALUng, out=jmpng);
+    And(a=J2, b=outALUzr, out=jmpzr);
+    Or(a=outALUng, b=outALUzr, out=outALUngzr);
+    Not(in=outALUngzr, out=outALUps);
+    And(a=J3, b=outALUps, out=jmpps);
+    Or8Way(in[0]=jmpng, in[1]=jmpzr, in[3]=jmpps, in[4..7]=false, out=JmpAReg);
+
+    // if jmp, set A reg param to PC, other case is PC+1
+    Not(in=JmpAReg, out=Cntup);
+    PC(in=CurAReg, load=JmpAReg, inc=Cntup, reset=reset, out[0..14]=pc);
+}
