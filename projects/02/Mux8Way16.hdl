@@ -19,50 +19,7 @@ CHIP Mux8Way16 {
 
     PARTS:
     // Put your code here:
-    Mux4Way16(a[0]=a[0], a[1]=a[1], a[2]=a[2], a[3]=a[3], a[4]=a[4], a[5]=a[5], 
-    	    a[6]=a[6], a[7]=a[7], a[8]=a[8], a[9]=a[9], a[10]=a[10], a[11]=a[11], 
-	    a[12]=a[12], a[13]=a[13], a[14]=a[14], a[15]=a[15],
-	    b[0]=b[0], b[1]=b[1], b[2]=b[2], b[3]=b[3], b[4]=b[4], b[5]=b[5], 
-    	    b[6]=b[6], b[7]=b[7], b[8]=b[8], b[9]=b[9], b[10]=b[10], b[11]=b[11], 
-	    b[12]=b[12], b[13]=b[13], b[14]=b[14], b[15]=b[15], 
-	    c[0]=c[0], c[1]=c[1], c[2]=c[2], c[3]=c[3], c[4]=c[4], c[5]=c[5], 
-    	    c[6]=c[6], c[7]=c[7], c[8]=c[8], c[9]=c[9], c[10]=c[10], c[11]=c[11], 
-	    c[12]=c[12], c[13]=c[13], c[14]=c[14], c[15]=c[15],
-	    d[0]=d[0], d[1]=d[1], d[2]=d[2], d[3]=d[3], d[4]=d[4], d[5]=d[5], 
-    	    d[6]=d[6], d[7]=d[7], d[8]=d[8], d[9]=d[9], d[10]=d[10], d[11]=d[11], 
-	    d[12]=d[12], d[13]=d[13], d[14]=d[14], d[15]=d[15],
-	    sel[0]=sel[0], sel[1]=sel[1],
-	    out[0]=outad0, out[1]=outad1, out[2]=outad2, out[3]=outad3, out[4]=outad4, 
-	    out[5]=outad5, out[6]=outad6, out[7]=outad7, out[8]=outad8, out[9]=outad9, 
-	    out[10]=outad10, out[11]=outad11, out[12]=outad12, out[13]=outad13, 
-	    out[14]=outad14, out[15]=outad15);
-
-    Mux4Way16(a[0]=e[0], a[1]=e[1], a[2]=e[2], a[3]=e[3], a[4]=e[4], a[5]=e[5], 
-    	    a[6]=e[6], a[7]=e[7], a[8]=e[8], a[9]=e[9], a[10]=e[10], a[11]=e[11], 
-	    a[12]=e[12], a[13]=e[13], a[14]=e[14], a[15]=e[15],
-	    b[0]=f[0], b[1]=f[1], b[2]=f[2], b[3]=f[3], b[4]=f[4], b[5]=f[5], 
-    	    b[6]=f[6], b[7]=f[7], b[8]=f[8], b[9]=f[9], b[10]=f[10], b[11]=f[11], 
-	    b[12]=f[12], b[13]=f[13], b[14]=f[14], b[15]=f[15], 
-	    c[0]=g[0], c[1]=g[1], c[2]=g[2], c[3]=g[3], c[4]=g[4], c[5]=g[5], 
-    	    c[6]=g[6], c[7]=g[7], c[8]=g[8], c[9]=g[9], c[10]=g[10], c[11]=g[11], 
-	    c[12]=g[12], c[13]=g[13], c[14]=g[14], c[15]=g[15],
-	    d[0]=h[0], d[1]=h[1], d[2]=h[2], d[3]=h[3], d[4]=h[4], d[5]=h[5], 
-    	    d[6]=h[6], d[7]=h[7], d[8]=h[8], d[9]=h[9], d[10]=h[10], d[11]=h[11], 
-	    d[12]=h[12], d[13]=h[13], d[14]=h[14], d[15]=h[15],
-	    sel[0]=sel[0], sel[1]=sel[1],
-	    out[0]=outeh0, out[1]=outeh1, out[2]=outeh2, out[3]=outeh3, out[4]=outeh4, 
-	    out[5]=outeh5, out[6]=outeh6, out[7]=outeh7, out[8]=outeh8, out[9]=outeh9, 
-	    out[10]=outeh10, out[11]=outeh11, out[12]=outeh12, out[13]=outeh13, 
-	    out[14]=outeh14, out[15]=outeh15);
-
-    Mux16(a[0]=outad0, a[1]=outad1, a[2]=outad2, a[3]=outad3, a[4]=outad4, 
-          a[5]=outad5, a[6]=outad6, a[7]=outad7, a[8]=outad8, a[9]=outad9, 
-	  a[10]=outad10, a[11]=outad11, a[12]=outad12, a[13]=outad13, a[14]=outad14, a[15]=outad15, 
-	  b[0]=outeh0, b[1]=outeh1, b[2]=outeh2, b[3]=outeh3, b[4]=outeh4, 
-          b[5]=outeh5, b[6]=outeh6, b[7]=outeh7, b[8]=outeh8, b[9]=outeh9, 
-	  b[10]=outeh10, b[11]=outeh11, b[12]=outeh12, b[13]=outeh13, b[14]=outeh14, b[15]=outeh15,
-	  sel=sel[2],
-	  out[0]=out[0], out[1]=out[1], out[2]=out[2], out[3]=out[3], out[4]=out[4], 
-	  out[5]=out[5], out[6]=out[6], out[7]=out[7], out[8]=out[8], out[9]=out[9], 
-	  out[10]=out[10], out[11]=out[11], out[12]=out[12], out[13]=out[13], out[14]=out[14], out[15]=out[15]);
+    Mux4Way16(a=a, b=b, c=c, d=d, sel=sel[0..1], out=outa2d);
+    Mux4Way16(a=e, b=f, c=g, d=h, sel=sel[0..1], out=oute2h);
+    Mux16(a=outa2d, b=oute2h, sel=sel[2], out=out);      
 }

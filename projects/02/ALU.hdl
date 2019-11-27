@@ -45,177 +45,38 @@ CHIP ALU {
    // Put you code here:
 
    // zx
-   Mux16(a[0]=x[0], a[1]=x[1], a[2]=x[2], a[3]=x[3],
-         a[4]=x[4], a[5]=x[5], a[6]=x[6], a[7]=x[7],
-         a[8]=x[8], a[9]=x[9], a[10]=x[10], a[11]=x[11],
-         a[12]=x[12], a[13]=x[13], a[14]=x[14], a[15]=x[15],
-	 b[0]=false, b[1]=false, b[2]=false, b[3]=false,
-         b[4]=false, b[5]=false, b[6]=false, b[7]=false,
-         b[8]=false, b[9]=false, b[10]=false, b[11]=false,
-         b[12]=false, b[13]=false, b[14]=false, b[15]=false,
-	 sel=zx,
-	 out[0]=zxout0, out[1]=zxout1, out[2]=zxout2, out[3]=zxout3,
-         out[4]=zxout4, out[5]=zxout5, out[6]=zxout6, out[7]=zxout7,
-         out[8]=zxout8, out[9]=zxout9, out[10]=zxout10, out[11]=zxout11,
-         out[12]=zxout12, out[13]=zxout13, out[14]=zxout14, out[15]=zxout15);
+   Mux16(a=x, b=false, sel=zx, out=outzx);
 
    // nx
-   Not16(in[0]=zxout0, in[1]=zxout1, in[2]=zxout2, in[3]=zxout3,
-         in[4]=zxout4, in[5]=zxout5, in[6]=zxout6, in[7]=zxout7,
-         in[8]=zxout8, in[9]=zxout9, in[10]=zxout10, in[11]=zxout11,
-         in[12]=zxout12, in[13]=zxout13, in[14]=zxout14, in[15]=zxout15,
-	 out[0]=notx0, out[1]=notx1, out[2]=notx2, out[3]=notx3,
-         out[4]=notx4, out[5]=notx5, out[6]=notx6, out[7]=notx7,
-         out[8]=notx8, out[9]=notx9, out[10]=notx10, out[11]=notx11,
-         out[12]=notx12, out[13]=notx13, out[14]=notx14, out[15]=notx15);
-   Mux16(a[0]=zxout0, a[1]=zxout1, a[2]=zxout2, a[3]=zxout3,
-         a[4]=zxout4, a[5]=zxout5, a[6]=zxout6, a[7]=zxout7,
-         a[8]=zxout8, a[9]=zxout9, a[10]=zxout10, a[11]=zxout11,
-         a[12]=zxout12, a[13]=zxout13, a[14]=zxout14, a[15]=zxout15,
-	 b[0]=notx0, b[1]=notx1, b[2]=notx2, b[3]=notx3,
-         b[4]=notx4, b[5]=notx5, b[6]=notx6, b[7]=notx7,
-         b[8]=notx8, b[9]=notx9, b[10]=notx10, b[11]=notx11,
-         b[12]=notx12, b[13]=notx13, b[14]=notx14, b[15]=notx15,
-	 sel=nx,
-	 out[0]=nxout0, out[1]=nxout1, out[2]=nxout2, out[3]=nxout3,
-         out[4]=nxout4, out[5]=nxout5, out[6]=nxout6, out[7]=nxout7,
-         out[8]=nxout8, out[9]=nxout9, out[10]=nxout10, out[11]=nxout11,
-         out[12]=nxout12, out[13]=nxout13, out[14]=nxout14, out[15]=nxout15);
+   Not16(in=outzx, out=notzx);         
+   Mux16(a=outzx, b=notzx, sel=nx, out=outnx);
 
    // zy
-   Mux16(a[0]=y[0], a[1]=y[1], a[2]=y[2], a[3]=y[3],
-         a[4]=y[4], a[5]=y[5], a[6]=y[6], a[7]=y[7],
-         a[8]=y[8], a[9]=y[9], a[10]=y[10], a[11]=y[11],
-         a[12]=y[12], a[13]=y[13], a[14]=y[14], a[15]=y[15],
-	 b[0]=false, b[1]=false, b[2]=false, b[3]=false,
-         b[4]=false, b[5]=false, b[6]=false, b[7]=false,
-         b[8]=false, b[9]=false, b[10]=false, b[11]=false,
-         b[12]=false, b[13]=false, b[14]=false, b[15]=false,
-	 sel=zy,
-	 out[0]=zyout0, out[1]=zyout1, out[2]=zyout2, out[3]=zyout3,
-         out[4]=zyout4, out[5]=zyout5, out[6]=zyout6, out[7]=zyout7,
-         out[8]=zyout8, out[9]=zyout9, out[10]=zyout10, out[11]=zyout11,
-         out[12]=zyout12, out[13]=zyout13, out[14]=zyout14, out[15]=zyout15);
+   Mux16(a=y, b=false, sel=zy, out=outzy);
 
    // ny
-   Not16(in[0]=zyout0, in[1]=zyout1, in[2]=zyout2, in[3]=zyout3,
-         in[4]=zyout4, in[5]=zyout5, in[6]=zyout6, in[7]=zyout7,
-         in[8]=zyout8, in[9]=zyout9, in[10]=zyout10, in[11]=zyout11,
-         in[12]=zyout12, in[13]=zyout13, in[14]=zyout14, in[15]=zyout15,
-	 out[0]=noty0, out[1]=noty1, out[2]=noty2, out[3]=noty3,
-         out[4]=noty4, out[5]=noty5, out[6]=noty6, out[7]=noty7,
-         out[8]=noty8, out[9]=noty9, out[10]=noty10, out[11]=noty11,
-         out[12]=noty12, out[13]=noty13, out[14]=noty14, out[15]=noty15);
-   Mux16(a[0]=zyout0, a[1]=zyout1, a[2]=zyout2, a[3]=zyout3,
-         a[4]=zyout4, a[5]=zyout5, a[6]=zyout6, a[7]=zyout7,
-         a[8]=zyout8, a[9]=zyout9, a[10]=zyout10, a[11]=zyout11,
-         a[12]=zyout12, a[13]=zyout13, a[14]=zyout14, a[15]=zyout15,
-	 b[0]=noty0, b[1]=noty1, b[2]=noty2, b[3]=noty3,
-         b[4]=noty4, b[5]=noty5, b[6]=noty6, b[7]=noty7,
-         b[8]=noty8, b[9]=noty9, b[10]=noty10, b[11]=noty11,
-         b[12]=noty12, b[13]=noty13, b[14]=noty14, b[15]=noty15,
-	 sel=ny,
-	 out[0]=nyout0, out[1]=nyout1, out[2]=nyout2, out[3]=nyout3,
-         out[4]=nyout4, out[5]=nyout5, out[6]=nyout6, out[7]=nyout7,
-         out[8]=nyout8, out[9]=nyout9, out[10]=nyout10, out[11]=nyout11,
-         out[12]=nyout12, out[13]=nyout13, out[14]=nyout14, out[15]=nyout15);
+   Not16(in=outzy, out=notzy);
+   Mux16(a=outzy, b=notzy, sel=ny, out=outny);
 	 
    // f
-   Add16(a[0]=nxout0, a[1]=nxout1, a[2]=nxout2, a[3]=nxout3,
-         a[4]=nxout4, a[5]=nxout5, a[6]=nxout6, a[7]=nxout7,
-         a[8]=nxout8, a[9]=nxout9, a[10]=nxout10, a[11]=nxout11,
-         a[12]=nxout12, a[13]=nxout13, a[14]=nxout14, a[15]=nxout15,
-	 b[0]=nyout0, b[1]=nyout1, b[2]=nyout2, b[3]=nyout3,
-         b[4]=nyout4, b[5]=nyout5, b[6]=nyout6, b[7]=nyout7,
-         b[8]=nyout8, b[9]=nyout9, b[10]=nyout10, b[11]=nyout11,
-         b[12]=nyout12, b[13]=nyout13, b[14]=nyout14, b[15]=nyout15,
-	 out[0]=faddout0, out[1]=faddout1, out[2]=faddout2, out[3]=faddout3,
-         out[4]=faddout4, out[5]=faddout5, out[6]=faddout6, out[7]=faddout7,
-         out[8]=faddout8, out[9]=faddout9, out[10]=faddout10, out[11]=faddout11,
-         out[12]=faddout12, out[13]=faddout13, out[14]=faddout14, out[15]=faddout15);
-   And16(a[0]=nxout0, a[1]=nxout1, a[2]=nxout2, a[3]=nxout3,
-         a[4]=nxout4, a[5]=nxout5, a[6]=nxout6, a[7]=nxout7,
-         a[8]=nxout8, a[9]=nxout9, a[10]=nxout10, a[11]=nxout11,
-         a[12]=nxout12, a[13]=nxout13, a[14]=nxout14, a[15]=nxout15,
-	 b[0]=nyout0, b[1]=nyout1, b[2]=nyout2, b[3]=nyout3,
-         b[4]=nyout4, b[5]=nyout5, b[6]=nyout6, b[7]=nyout7,
-         b[8]=nyout8, b[9]=nyout9, b[10]=nyout10, b[11]=nyout11,
-         b[12]=nyout12, b[13]=nyout13, b[14]=nyout14, b[15]=nyout15,
-	 out[0]=fandout0, out[1]=fandout1, out[2]=fandout2, out[3]=fandout3,
-         out[4]=fandout4, out[5]=fandout5, out[6]=fandout6, out[7]=fandout7,
-         out[8]=fandout8, out[9]=fandout9, out[10]=fandout10, out[11]=fandout11,
-         out[12]=fandout12, out[13]=fandout13, out[14]=fandout14, out[15]=fandout15);
-   Mux16(a[0]=fandout0, a[1]=fandout1, a[2]=fandout2, a[3]=fandout3,
-         a[4]=fandout4, a[5]=fandout5, a[6]=fandout6, a[7]=fandout7,
-         a[8]=fandout8, a[9]=fandout9, a[10]=fandout10, a[11]=fandout11,
-         a[12]=fandout12, a[13]=fandout13, a[14]=fandout14, a[15]=fandout15,
-	 b[0]=faddout0, b[1]=faddout1, b[2]=faddout2, b[3]=faddout3,
-         b[4]=faddout4, b[5]=faddout5, b[6]=faddout6, b[7]=faddout7,
-         b[8]=faddout8, b[9]=faddout9, b[10]=faddout10, b[11]=faddout11,
-         b[12]=faddout12, b[13]=faddout13, b[14]=faddout14, b[15]=faddout15,
-	 sel=f,
-	 out[0]=fout0, out[1]=fout1, out[2]=fout2, out[3]=fout3,
-         out[4]=fout4, out[5]=fout5, out[6]=fout6, out[7]=fout7,
-         out[8]=fout8, out[9]=fout9, out[10]=fout10, out[11]=fout11,
-         out[12]=fout12, out[13]=fout13, out[14]=fout14, out[15]=fout15);
+   Add16(a=outnx, b=outny, out=addnxny);
+   And16(a=outnx, b=outny, out=andnxny);
+   Mux16(a=andnxny, b=addnxny, sel=f, out=outf);
 
-   // no 
-   Not16(in[0]=fout0, in[1]=fout1, in[2]=fout2, in[3]=fout3,
-         in[4]=fout4, in[5]=fout5, in[6]=fout6, in[7]=fout7,
-         in[8]=fout8, in[9]=fout9, in[10]=fout10, in[11]=fout11,
-         in[12]=fout12, in[13]=fout13, in[14]=fout14, in[15]=fout15,
-	 out[0]=notfout0, out[1]=notfout1, out[2]=notfout2, out[3]=notfout3,
-         out[4]=notfout4, out[5]=notfout5, out[6]=notfout6, out[7]=notfout7,
-         out[8]=notfout8, out[9]=notfout9, out[10]=notfout10, out[11]=notfout11,
-         out[12]=notfout12, out[13]=notfout13, out[14]=notfout14, out[15]=notfout15);
-   Mux16(a[0]=fout0, a[1]=fout1, a[2]=fout2, a[3]=fout3,
-         a[4]=fout4, a[5]=fout5, a[6]=fout6, a[7]=fout7,
-         a[8]=fout8, a[9]=fout9, a[10]=fout10, a[11]=fout11,
-         a[12]=fout12, a[13]=fout13, a[14]=fout14, a[15]=fout15,
-	 b[0]=notfout0, b[1]=notfout1, b[2]=notfout2, b[3]=notfout3,
-         b[4]=notfout4, b[5]=notfout5, b[6]=notfout6, b[7]=notfout7,
-         b[8]=notfout8, b[9]=notfout9, b[10]=notfout10, b[11]=notfout11,
-         b[12]=notfout12, b[13]=notfout13, b[14]=notfout14, b[15]=notfout15,
-	 sel=no,
-	 out[0]=out[0], out[1]=out[1], out[2]=out[2], out[3]=out[3],
-         out[4]=out[4], out[5]=out[5], out[6]=out[6], out[7]=out[7],
-         out[8]=out[8], out[9]=out[9], out[10]=out[10], out[11]=out[11],
-         out[12]=out[12], out[13]=out[13], out[14]=out[14], out[15]=out[15]);
-   // for zr, ng, store result-out
-   Mux16(a[0]=fout0, a[1]=fout1, a[2]=fout2, a[3]=fout3,
-         a[4]=fout4, a[5]=fout5, a[6]=fout6, a[7]=fout7,
-         a[8]=fout8, a[9]=fout9, a[10]=fout10, a[11]=fout11,
-         a[12]=fout12, a[13]=fout13, a[14]=fout14, a[15]=fout15,
-	 b[0]=notfout0, b[1]=notfout1, b[2]=notfout2, b[3]=notfout3,
-         b[4]=notfout4, b[5]=notfout5, b[6]=notfout6, b[7]=notfout7,
-         b[8]=notfout8, b[9]=notfout9, b[10]=notfout10, b[11]=notfout11,
-         b[12]=notfout12, b[13]=notfout13, b[14]=notfout14, b[15]=notfout15,
-	 sel=no,
-	 out[0]=noout0, out[1]=noout1, out[2]=noout2, out[3]=noout3,
-         out[4]=noout4, out[5]=noout5, out[6]=noout6, out[7]=noout7,
-         out[8]=noout8, out[9]=noout9, out[10]=noout10, out[11]=noout11,
-         out[12]=noout12, out[13]=noout13, out[14]=noout14, out[15]=noout15);
-   
+   // no
+   Not16(in=outf, out=notf);
+   Mux16(a=outf,  b=notf, sel=no, out=out);
+   Mux16(a=outf,  b=notf, sel=no, out=outtmp);    // for zr, ng, store result-out
+
    // zr
-   Or(a=noout0, b=false, out=zrchk0);
-   Or(a=noout1, b=zrchk0, out=zrchk1);
-   Or(a=noout2, b=zrchk1, out=zrchk2);
-   Or(a=noout3, b=zrchk2, out=zrchk3);
-   Or(a=noout4, b=zrchk3, out=zrchk4);
-   Or(a=noout5, b=zrchk4, out=zrchk5);
-   Or(a=noout6, b=zrchk5, out=zrchk6);
-   Or(a=noout7, b=zrchk6, out=zrchk7);
-   Or(a=noout8, b=zrchk7, out=zrchk8);
-   Or(a=noout9, b=zrchk8, out=zrchk9);
-   Or(a=noout10, b=zrchk9, out=zrchk10);
-   Or(a=noout11, b=zrchk10, out=zrchk11);
-   Or(a=noout12, b=zrchk11, out=zrchk12);
-   Or(a=noout13, b=zrchk12, out=zrchk13);
-   Or(a=noout14, b=zrchk13, out=zrchk14);
-   Or(a=noout15, b=zrchk14, out=zrchk15);
-   Not(in=zrchk15, out=zr);
+   And16(a=outtmp, b=true, out[0..7]=iszrl, out[8..15]=iszrh);
+   Or8Way(in=iszrl, out=isnotzrl);
+   Or8Way(in=iszrh, out=isnotzrh);
+   Or(a=isnotzrl, b=isnotzrh, out=notzr);
+   Not(in=notzr, out=zr);  
 
    // ng
-   And(a=noout15, b=true, out=ng);   
+   And16(a=outtmp, b=true, out[0..14]=nouse, out[15]=outhead);   
+   And(a=outhead, b=true, out=ng);      
 
 }
