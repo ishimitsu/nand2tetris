@@ -69,11 +69,8 @@ CHIP ALU {
    Mux16(a=outf,  b=notf, sel=no, out=outtmp);    // for zr, ng, store result-out
 
    // zr
-   And16(a=outtmp, b=true, out[0..7]=iszrl, out[8..15]=iszrh);
-   Or8Way(in=iszrl, out=isnotzrl);
-   Or8Way(in=iszrh, out=isnotzrh);
-   Or(a=isnotzrl, b=isnotzrh, out=notzr);
-   Not(in=notzr, out=zr);  
+   Or16Way(in=outtmp, out=isnotzr);
+   Not(in=isnotzr, out=zr);
 
    // ng
    And16(a=outtmp, b=true, out[0..14]=nouse, out[15]=outhead);   
