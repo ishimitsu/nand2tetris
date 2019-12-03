@@ -7,35 +7,32 @@
 // (R0, R1, R2 refer to RAM[0], RAM[1], and RAM[2], respectively.)
 
 // Put your code here.
-	
-// R2=0	
- @R2
- M=0 
-// i=0	
- @i
- M=0 
+
+(INIT)    
+    @R2     // store the result of R0*R1
+    M=0     // R2=0	
+    @i
+    M=0     // i=0	
 	
 (LOOP)
- // if R1-i=0, Goto End
- @R1
- D=M
- @i
- D=D-M
- @END
- D;JEQ
+    @R1     // RAM[1]
+    D=M
+    @i
+    D=D-M
+    @END
+    D;JEQ   // if R1-i == 0, Goto END
 
- // R2 += R0
- @R0
- D=M
- @R2
- M=D+M
+    @R0     // RAM[0]
+    D=M
+    @R2
+    M=D+M   // R2 += R0
 	
- @i
- M=M+1  // i++	
- @LOOP  
- 0;JMP  // Goto Loop
+    @i
+    M=M+1   // i++	
+    @LOOP  
+    0;JMP   // go to LOOP
 	
 (END)
- @END
- 0;JMP
+    @END
+    0;JMP
 	

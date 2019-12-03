@@ -17,22 +17,21 @@
 	// [line=r, column=c pixel] = RAM[16384 + r*32 + c/16]
 
 (TOP)
-	@SCREEN	
+	@SCREEN	    // RAM[16384], written data will be outputed to screen
 	D=A
-	@pixeladdr 	// refer pixel address, init value=16384
+	@pixeladdr 	// refer pixel address, initialize addr=SCREEN=16384
 	M=D
-	
-	@KBD // Check RAM[24576], Input from keyboard
+	@KBD        // RAM[24576], inputed data from keyboard will be stored 
 	D=M
 
-	@BLACK // If RAM[24576] > 0, Color =  Black
+	@BLACK      // If KBD > 0, Color=Black
 	D;JGT
 
-	@WHITE // If RAM[24576] = 0, Color = White
+	@WHITE      // If KBD = 0, Color=White
 	0;JMP
 
 (BLACK)
-	@color
+	@color      // variable for storing color param, at RAM[16]
 	M=-1
 	@DRAW
 	0;JMP
@@ -48,7 +47,7 @@
 	D=M
 	@pixeladdr
 	A=M
-	M=D 	// *addr =color
+	M=D 	// *pixeladdr =color
 
 	@pixeladdr
 	M=M+1
@@ -59,7 +58,7 @@
 	D=D+A
 	@pixeladdr
 	D=D-M  // D = 8192 + SCREEN - addr
-	// Loop While Drawing Finish	
+	// Loop While pixeladdr != SCREEN+8192, all pixels are written.
 	@DRAW
 	D;JGT
 	
