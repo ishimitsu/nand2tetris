@@ -7,30 +7,30 @@ from Asm_Code import Code
 from Asm_SymbolTable import SymbolTable
 
 class HackAssember:
-    
+
+    variable_symbol_table_start_addr = 0x0010
     def __init__(self):
-        self.cur_rom_addr = 0x0
-        self.bincode_romaddr_table = {}
+        self.var_symbol_table_end_addr = self.variable_symbol_table_start_addr
     
-    def add_new_bincode(self, bincode):
-        # new = {self.cur_rom_addr, bincode}
-        # self.bincode_romaddr_table.update(new)
-        # self.cur_rom_addr+=0x1
-        return
+    def add_new_symbol2table(self, symbol, symbol_table):
+        symbol_addr = self.var_symbol_table_end_addr
+        symbol_table.addEntry(symbol, symbol_addr)
+        self.var_symbol_table_end_addr += 0x1
+        return symbol_addr
     
     def get_a_cmd_bincode (self,  parser, code, symbol_table):
-        a_symbol = parser.symbol()
-        bincode = 0b0
-        
-        if a_symbol.isdigit():
-            a_value = int(a_symbol)
-            bincode = format(a_value, '016b')
+        symbol      = parser.symbol()
+        symbol_addr = 0x0
+
+        if symbol.isdigit():
+            symbol_addr = int(symbol)
         else:
-            # dummy
-            a_value = 0b0
-            bincode = format(a_value, '016b')            
-            
-        # print("TYPE:", parser.commandType(), " => BINCODE:", bincode)                            
+            if symbol_table.contains(symbol):
+                symbol_addr = symbol_table.getAddress(symbol)
+            else:
+                symbol_addr = self.add_new_symbol2table(symbol, symbol_table)
+
+        bincode = format(symbol_addr, '016b')            
         return bincode
 
     def get_c_cmd_bincode (self, parser, code):
@@ -53,8 +53,6 @@ class HackAssember:
             jump_code = code.jump(c_jump)
 
         bincode = bin(c_cmd_code<<13 | comp_code<<6 | dest_code<<3 | jump_code)[2:]
-        # print("TYPE:", parser.commandType(), " => BINCODE:", bincode)
-            
         return bincode
 
 
@@ -68,11 +66,9 @@ class HackAssember:
             if cmd_type == "A_COMMAND":
                 bincode = self.get_a_cmd_bincode(parser, code, symbol_table)
                 bincode_list.append(bincode)
-                self.add_new_bincode(bincode)
             elif cmd_type == "C_COMMAND":
                 bincode = self.get_c_cmd_bincode(parser, code)
                 bincode_list.append(bincode)
-                self.add_new_bincode(bincode)
         return bincode_list
 
     
@@ -84,9 +80,9 @@ class HackAssember:
             cmd_type = parser.commandType()
             if cmd_type == "L_COMMAND":
                 symbol = parser.symbol()                
-                symbol_table.addEntry(symbol, rom_addr+1)
+                symbol_table.addEntry(symbol, rom_addr)
             elif cmd_type in {"A_COMMAND", "C_COMMAND"}:
-                rom_addr+=1
+                rom_addr += 0x1
         return
     
     
@@ -94,9 +90,9 @@ class HackAssember:
         symbol_table = SymbolTable();
 
         self.find_l_cmd_symbol2table(asm_file, symbol_table)
-        pprint.pprint(symbol_table.symbol_table)
         bincode_list = self.cvt_a_c_cmd2bincode(asm_file, symbol_table)
-        pprint.pprint(bincode_list)        
+        # pprint.pprint(symbol_table.symbol_table)        
+        # pprint.pprint(bincode_list)        
         
         with open(hack_file, mode='w') as fp_hack:
             fp_hack.writelines('\n'.join(bincode_list))

@@ -17,9 +17,6 @@ class SymbolTable:
         self.val_symbol_table = []
 
     def addEntry(self, symbol, address):
-        # new = {symbol, address}
-        # print("new l label", new)
-        # self.symbol_table.update(new)
         self.symbol_table[symbol] = address
         return
 
