@@ -44,27 +44,30 @@ class Parser:
         cmd_head = cmd[0]
         if   cmd_head.startswith('//'):
             self.cmd_type = "NOT_COMMAND"
-        elif 'push' in cmd_head:
+        elif cmd_head.startswith('push'):
             self.cmd_type = "C_PUSH"
-        elif 'pop' in cmd_head:
+        elif cmd_head.startswith('pop'):
             self.cmd_type = "C_POP"
-        elif 'label' in cmd_head:
+        elif cmd_head.startswith('label'):
             self.cmd_type = "C_LABEL"            
-        elif 'goto' in cmd_head:
+        elif cmd_head.startswith('goto'):
             self.cmd_type = "C_GOTO"
-        elif 'if' in cmd_head:
+        elif cmd_head.startswith('if'):
             self.cmd_type = "C_IF"            
-        elif 'function' in cmd_head:
+        elif cmd_head.startswith('function'):
             self.cmd_type = "C_FUNCTION"            
-        elif 'return' in cmd_head:
+        elif cmd_head.startswith('return'):
             self.cmd_type = "C_RETURN"
-        elif 'call' in cmd_head:
+        elif cmd_head.startswith('call'):
             self.cmd_type = "C_CALL"   
-        elif '+-&|=' in cmd_head:
+        elif cmd_head in ['add', 'sub', 'eq', 'lt', 'gt', 'neg', 'or', 'not']:
             self.cmd_type = "C_ARITHMETIC"            
         else :
             self.cmd_type = "NOT_COMMAND"
 
+        if self.cmd_type != "NOT_COMMAND":
+            print(self.cur_cmd, " => ", self.cmd_type)
+            
         return self.cmd_type
 
     def arg1(self, args):
