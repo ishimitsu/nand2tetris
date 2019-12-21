@@ -30,17 +30,29 @@ class VMtranslator:
 
     
     def vm_translator(self, vm_file, asm_file):
-        parser = Parser(vm_file)
-        # pprint.pprint(parser.readlines)
-
+        parser      = Parser(vm_file)
+        code_writer = CodeWriter(asm_file)        
+        code_writer.setFileName(asm_file)
+        
         while parser.hasMoreCommands():
             parser.advance()
             cmd_type = parser.commandType()
-            # if cmd_type != "NOT_COMMAND":
-            #     print(parser.cur_cmd)
-        
+            if cmd_type != "NOT_COMMAND":
+                cmd  = parser.args[0]
+                arg1 = parser.arg1()
+                arg2 = parser.arg2()
+                print(parser.cur_cmd, " => ", parser.args)
+
+                if parser.cmd_type == "C_ARITHMETIC":
+                    code_writer.writeArithmetic(cmd)
+                elif parser.cmd_type in ["C_PUSH", "C_POP", "C_FUNCTION", "C_CALL"]:
+                    code_writer.writePushPop(cmd, arg1, arg2)
+                    # elif parser.cmd_type == "C_RETURN":
+                    # else:
+                    
+        code_writer.close()
+                
         return
-    
 
 if __name__ == '__main__':
 
