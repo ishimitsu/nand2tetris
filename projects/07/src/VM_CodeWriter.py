@@ -38,34 +38,78 @@ class CodeWriter:
     
     def __init__(self, file):
         self.fp = open(file, mode='w')
-        self.ram = [0] * 0x7fff
+        # self.ram = [0] * 0x7fff
         
         # register
         self.sp = self.ram_base_addr["stack"]
         
-        self.asmcode_list = []
         return 
 
+    def add_asmcode_init_sp(self, asmcode_list):
+        self.sp = self.ram_base_addr["stack"]
+
+        asmcode_list.append("// INIT SP" )       
+        asmcode_list.append("@" + str(self.sp))
+        asmcode_list.append("D=A")   
+        asmcode_list.append("@SP")        
+        asmcode_list.append("M=D")
+        asmcode_list.append("" )               
+
+        return 
+    
+    def add_asmcode_push_stack(self, asmcode_list):
+        asmcode_list.append("@" + str(self.sp))
+        asmcode_list.append("M=D")
+        
+        self.sp  += 0x1
+        asmcode_list.append("@" + str(self.sp))
+        asmcode_list.append("D=A")   
+        asmcode_list.append("@SP")        
+        asmcode_list.append("M=D")
+        return 
+    
+    def add_asmcode_pop_stack(self, asmcode_list):
+        self.sp  -= 0x1
+        asmcode_list.append("@" + str(self.sp))
+        asmcode_list.append("D=A")   
+        asmcode_list.append("@SP")        
+        asmcode_list.append("M=D")
+        
+        asmcode_list.append("@" + str(self.sp))
+        asmcode_list.append("D=M")                
+        return 
+
+    def add_asmcode_arithmetic(self, asmcode_list, arithmetic):
+        self.sp  -= 0x1
+        asmcode_list.append("@" + str(self.sp))
+        if arithmetic in ["+", "-", "&", "|"]:
+            asmcode_list.append("D=D" + arithmetic + "M")
+
+        return 
+    
     def setFileName(self, FileName):
+        asmcode_list = []
+        self.add_asmcode_init_sp(asmcode_list)
+        self.fp.write('\n'.join(asmcode_list))
+        self.fp.write('\n')        
+        
         return
 
     def writeArithmetic(self, command):
         asmcode_list = []
-        
+              
         if command == "add":
-            self.sp -= 0x1                        
-            asmcode_list.append("@" + str(self.sp)) 
-            asmcode_list.append("D=M")
+            arithmetic = "+"
+            self.add_asmcode_pop_stack(asmcode_list)
+            self.add_asmcode_arithmetic(asmcode_list, arithmetic)
+            self.add_asmcode_push_stack(asmcode_list)
 
-            self.sp -= 0x1            
-            asmcode_list.append("@" + str(self.sp)) 
-            asmcode_list.append("D=D+M")
+        elif command == "sub":
+            arithmetic = "-"
+            self.add_asmcode_pop_stack(asmcode_list)
+            self.add_asmcode_arithmetic(asmcode_list, arithmetic)
+            self.add_asmcode_push_stack(asmcode_list)
             
-            asmcode_list.append("@" + str(self.sp)) 
-            asmcode_list.append("M=D")
-            self.sp += 0x1
-
-        # elif command == "sub":
         # elif command == "neg":
         #     arg1 = self.constant.pop()
         #     asmcode = "-" + arg1
@@ -75,10 +119,17 @@ class CodeWriter:
         #     asmcode = arg1 + "-" + arg2
         # elif command == "lt":
         #     asmcode = arg1 + "-" + arg2
-        # elif command == "and":
-        #     asmcode = arg1 + "-" + arg2
-        # elif command == "or":
-        #     asmcode = arg1 + "-" + arg2
+        elif command == "and":
+            arithmetic = "&"
+            self.add_asmcode_pop_stack(asmcode_list)
+            self.add_asmcode_arithmetic(asmcode_list, arithmetic)
+            self.add_asmcode_push_stack(asmcode_list)
+        elif command == "or":
+            arithmetic = "|"
+            self.add_asmcode_pop_stack(asmcode_list)
+            self.add_asmcode_arithmetic(asmcode_list, arithmetic)
+            self.add_asmcode_push_stack(asmcode_list)
+
         # elif command == "not":
         #     asmcode = arg1 + "-" + arg2
 
@@ -95,19 +146,13 @@ class CodeWriter:
             if segment == "constant":
                 asmcode_list.append("@" + str(index))
                 asmcode_list.append("D=A")
-                asmcode_list.append("@" + str(self.sp))
-                asmcode_list.append("M=D")
-                
-            self.sp += 0x1
+                self.add_asmcode_push_stack(asmcode_list)                
             
         elif command == "pop":
-            self.sp -= 0x1
-            
             if segment == "constant":
-                asmcode_list.append("@" + addr)                
-                asmcode_list.append("D=M")
-                asmcode_list.append("@" + self.sp)                
-                asmcode_list.append("D=A")
+                self.add_asmcode_pop_stack(asmcode_list)
+                asmcode_list.append("@" + str(index))  
+                asmcode_list.append("M=D")
 
         print(" => ", asmcode_list)
         self.fp.write('\n'.join(asmcode_list))
