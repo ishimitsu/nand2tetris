@@ -3,9 +3,7 @@ import sys
 import pprint
 # import numpy as np
 
-
 class CodeWriter:
-
     # ArithCMD2ASM = {
     #     'add' : "ADD",
     #     'sub' : "SUB",
@@ -38,7 +36,7 @@ class CodeWriter:
     
     def __init__(self, file):
         self.fp = open(file, mode='w')
-        self.comparison_cnt = 0
+        self.comparison_label_cnt = 0
         # self.ram = [0] * 0x7fff
         
         # register
@@ -46,112 +44,98 @@ class CodeWriter:
         
         return 
 
-    def add_asmcode_init_sp(self, asmcode_list):
-        self.sp = self.ram_base_addr["stack"]
+    def writeAsmCode2File(self, asmcode):
+        self.fp.write(asmcode + '\n')
+        return
 
-        asmcode_list.append("// INIT SP" )       
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("D=A")   
-        asmcode_list.append("@SP")        
-        asmcode_list.append("M=D")
-        asmcode_list.append("")
-        
-        asmcode_list.append("(TOP)")        
-        
-        return 
+    def moveSP(self):
+        self.writeAsmCode2File("@" + str(self.sp))
+        self.writeAsmCode2File("D=A")   
+        self.writeAsmCode2File("@SP")        
+        self.writeAsmCode2File("M=D")
+        return
     
-    def add_asmcode_push_stack(self, asmcode_list):
-        asmcode_list.append("// PUSH STACK") # debug
-        
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("M=D")
-        
+    def incrementSP(self):
         self.sp  += 0x1
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("D=A")   
-        asmcode_list.append("@SP")        
-        asmcode_list.append("M=D")
+        self.moveSP() 
+        return 
+
+    def decementSP(self):
+        self.sp  -= 0x1
+        self.moveSP()         
         return 
     
-    def add_asmcode_pop_stack(self, asmcode_list):
-        asmcode_list.append("// POP STACK") # debug
-
-        self.sp  -= 0x1
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("D=A")   
-        asmcode_list.append("@SP")        
-        asmcode_list.append("M=D")
-        
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("D=M")
+    def initSP(self):
+        self.sp = self.ram_base_addr["stack"]
+        self.writeAsmCode2File("// INIT SP" )
+        self.moveSP()
+        return 
+    
+    def push2Stack(self):
+        # self.writeAsmCode2File("// PUSH STACK") # debug
+        self.writeAsmCode2File("@" + str(self.sp))
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()
+        return 
+    
+    def popfromStack(self):
+        # self.writeAsmCode2File("// POP STACK") # debug
+        self.decementSP()
+        self.writeAsmCode2File("@" + str(self.sp))
+        self.writeAsmCode2File("D=M")
         return 
 
-    def add_asmcode_arithmetic(self, asmcode_list, asmcode_arithmetic):
-        asmcode_list.append("// ARITHMETIC: " + asmcode_arithmetic ) # debug
-
+    def Arithmetic(self, asmcode_arithmetic):
+        # self.writeAsmCode2File("// ARITHMETIC: " + asmcode_arithmetic ) # debug
         self.sp  -= 0x1
-        asmcode_list.append("@" + str(self.sp))  
-        asmcode_list.append(asmcode_arithmetic)
-        
+        self.writeAsmCode2File("@" + str(self.sp))  
+        self.writeAsmCode2File(asmcode_arithmetic)
         return 
 
-    def add_asmcode_comparison(self, asmcode_list, asmcode_comparison):
-        label_idx   = str(self.comparison_cnt)
+    def Comparison(self, asmcode_comparison):
+        label_idx   = str(self.comparison_label_cnt)
         label_true  = "TRUE_"  + label_idx
         label_false = "FALSE_" + label_idx
         label_exit  = "EXIT_"  + label_idx
-        self.comparison_cnt += 1
+        self.comparison_label_cnt += 1
 
-        asmcode_list.append("// COMPARISON:  " + asmcode_comparison ) # debug
-        
+        # self.writeAsmCode2File("// COMPARISON:  " + asmcode_comparison ) # debug
         self.sp  -= 0x1        
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("D=M-D")
-        asmcode_list.append("@" + label_true) 
-        asmcode_list.append(asmcode_comparison)
-        asmcode_list.append("@" + label_false) 
-        asmcode_list.append("0;JMP")  
+        self.writeAsmCode2File("@" + str(self.sp))
+        self.writeAsmCode2File("D=M-D")
+        self.writeAsmCode2File("@" + label_true) 
+        self.writeAsmCode2File(asmcode_comparison)
+        self.writeAsmCode2File("@" + label_false) 
+        self.writeAsmCode2File("0;JMP")  
 
         # true case
-        asmcode_list.append("(" + label_true + ")")
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("M=-1")
-        asmcode_list.append("@" + label_exit)        
-        asmcode_list.append("0;JMP")
+        self.writeAsmCode2File("(" + label_true + ")")
+        self.writeAsmCode2File("@" + str(self.sp))
+        self.writeAsmCode2File("M=-1") # write true
+        self.writeAsmCode2File("@" + label_exit)        
+        self.writeAsmCode2File("0;JMP")
         # false case
-        asmcode_list.append("(" + label_false + ")")
-        asmcode_list.append("@" + str(self.sp))        
-        asmcode_list.append("M=0")
+        self.writeAsmCode2File("(" + label_false + ")")
+        self.writeAsmCode2File("@" + str(self.sp))        
+        self.writeAsmCode2File("M=0")  # write false
         # exit
-        asmcode_list.append("(" + label_exit + ")")
+        self.writeAsmCode2File("(" + label_exit + ")")
         
-        # move sp, because pushed M = -1 or 0      
-        self.sp  += 0x1
-        asmcode_list.append("@" + str(self.sp))
-        asmcode_list.append("D=A")   
-        asmcode_list.append("@SP")        
-        asmcode_list.append("M=D")
-        
+        # move sp, because pushed M = -1 or 0
+        self.incrementSP()
         return 
 
-    def add_asmcode_neg_not(self, asmcode_list, asmcode_arithmetic):
-        asmcode_list.append("// NEG, NOT: " + asmcode_arithmetic ) # debug
-
-        asmcode_list.append("@" + str(self.sp))  
-        asmcode_list.append(asmcode_arithmetic)
-        
+    def NegOrNot(self, asmcode_arithmetic):
+         #self.writeAsmCode2File("// NEG, NOT: " + asmcode_arithmetic ) # debug
+        self.writeAsmCode2File("@" + str(self.sp))  
+        self.writeAsmCode2File(asmcode_arithmetic)
         return 
     
     def setFileName(self, FileName):
-        asmcode_list = []
-        self.add_asmcode_init_sp(asmcode_list)
-        self.fp.write('\n'.join(asmcode_list))
-        self.fp.write('\n')        
-        
+        self.initSP()
         return
 
     def writeArithmetic(self, command):
-        asmcode_list = []
         asmcode_arithmetic = ""
         
         if command in ["add", "sub", "and", "or"]:
@@ -163,10 +147,9 @@ class CodeWriter:
                 asmcode_arithmetic = "D=D&M"
             elif command == "or":
                 asmcode_arithmetic = "D=D|M"
-            self.add_asmcode_pop_stack(asmcode_list) # get arg1            
-            self.add_asmcode_arithmetic(asmcode_list, asmcode_arithmetic)                
-            self.add_asmcode_push_stack(asmcode_list) # push result
-
+            self.popfromStack() # get arg1            
+            self.Arithmetic(asmcode_arithmetic)                
+            self.push2Stack() # push result
         elif command in ["eq", "gt", "lt"]:
             if command == "eq":
                 asmcode_arithmetic = "D;JEQ" 
@@ -174,42 +157,32 @@ class CodeWriter:
                 asmcode_arithmetic = "D;JGT"                 
             elif command == "lt":
                 asmcode_arithmetic = "D;JLT"                
-            self.add_asmcode_pop_stack(asmcode_list) # get arg1            
-            self.add_asmcode_comparison(asmcode_list, asmcode_arithmetic) 
-            
+            self.popfromStack() # get arg1            
+            self.Comparison(asmcode_arithmetic) 
         elif command in ["neg", "not"]:
             if command == "neg":
                 asmcode_arithmetic = "D=-D"
             elif command == "not":
                 asmcode_arithmetic = "D=!D"
-            self.add_asmcode_pop_stack(asmcode_list) # get arg1                
-            self.add_asmcode_neg_not(asmcode_list, asmcode_arithmetic)
-            self.add_asmcode_push_stack(asmcode_list)
+            self.popfromStack() # get arg1                
+            self.NegOrNot(asmcode_arithmetic)
+            self.push2Stack()
                 
-        print(" => ", asmcode_list)
-        self.fp.write('\n'.join(asmcode_list))
-        self.fp.write('\n')        
-        
         return
     
     def writePushPop(self, command, segment, index):
-        asmcode_list = []
-        
         if command == "push":
             if segment == "constant":
-                asmcode_list.append("@" + str(index))
-                asmcode_list.append("D=A")
-                self.add_asmcode_push_stack(asmcode_list)                
+                self.writeAsmCode2File("@" + str(index))
+                self.writeAsmCode2File("D=A")
+                self.push2Stack()                
             
         elif command == "pop":
             if segment == "constant":
-                self.add_asmcode_pop_stack(asmcode_list)
-                asmcode_list.append("@" + str(index))  
-                asmcode_list.append("M=D")
-
-        print(" => ", asmcode_list)
-        self.fp.write('\n'.join(asmcode_list))
-        self.fp.write('\n')
+                self.popfromStack()
+                self.writeAsmCode2File("@" + str(index))  
+                self.writeAsmCode2File("M=D")
+                
         return
 
     def close(self):
