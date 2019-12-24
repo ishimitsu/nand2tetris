@@ -33,6 +33,18 @@ class CodeWriter:
         "temp"   : 0x5,  # 0x5~0xc for store temp segment value
         "general" : 0xd  # 0xd~0xf can use as general register
     }
+
+    AsmCodeArithmetic = {
+        "add" : "D=D+M",
+        "sub" : "D=M-D",
+        "and" : "D=D&M",
+        "or"  : "D=D|M",
+        "eq"  : "D;JEQ",
+        "gt"  : "D;JGT",
+        "lt"  : "D;JLT",
+        "neg" : "D=-D",
+        "not" : "D=!D"        
+    }
     
     def __init__(self, file):
         self.fp = open(file, mode='w')
@@ -72,24 +84,23 @@ class CodeWriter:
         return 
     
     def push2Stack(self):
-        # self.writeAsmCode2File("// PUSH STACK") # debug
         self.writeAsmCode2File("@" + str(self.sp))
         self.writeAsmCode2File("M=D")
         self.incrementSP()
         return 
     
     def popfromStack(self):
-        # self.writeAsmCode2File("// POP STACK") # debug
         self.decementSP()
         self.writeAsmCode2File("@" + str(self.sp))
         self.writeAsmCode2File("D=M")
         return 
 
     def Arithmetic(self, asmcode_arithmetic):
-        # self.writeAsmCode2File("// ARITHMETIC: " + asmcode_arithmetic ) # debug
+        self.popfromStack() # get arg1
         self.sp  -= 0x1
         self.writeAsmCode2File("@" + str(self.sp))  
         self.writeAsmCode2File(asmcode_arithmetic)
+        self.push2Stack() # push result        
         return 
 
     def Comparison(self, asmcode_comparison):
@@ -99,7 +110,7 @@ class CodeWriter:
         label_exit  = "EXIT_"  + label_idx
         self.comparison_label_cnt += 1
 
-        # self.writeAsmCode2File("// COMPARISON:  " + asmcode_comparison ) # debug
+        self.popfromStack() # get arg1            
         self.sp  -= 0x1        
         self.writeAsmCode2File("@" + str(self.sp))
         self.writeAsmCode2File("D=M-D")
@@ -126,9 +137,10 @@ class CodeWriter:
         return 
 
     def NegOrNot(self, asmcode_arithmetic):
-         #self.writeAsmCode2File("// NEG, NOT: " + asmcode_arithmetic ) # debug
+        self.popfromStack() # get arg1                
         self.writeAsmCode2File("@" + str(self.sp))  
         self.writeAsmCode2File(asmcode_arithmetic)
+        self.push2Stack()        
         return 
     
     def setFileName(self, FileName):
@@ -136,37 +148,13 @@ class CodeWriter:
         return
 
     def writeArithmetic(self, command):
-        asmcode_arithmetic = ""
-        
+        asmcode = self.AsmCodeArithmetic.get(command, "")
         if command in ["add", "sub", "and", "or"]:
-            if command == "add":
-                asmcode_arithmetic = "D=D+M"
-            elif command == "sub":
-                asmcode_arithmetic = "D=M-D"                
-            elif command == "and":
-                asmcode_arithmetic = "D=D&M"
-            elif command == "or":
-                asmcode_arithmetic = "D=D|M"
-            self.popfromStack() # get arg1            
-            self.Arithmetic(asmcode_arithmetic)                
-            self.push2Stack() # push result
+            self.Arithmetic(asmcode)  
         elif command in ["eq", "gt", "lt"]:
-            if command == "eq":
-                asmcode_arithmetic = "D;JEQ" 
-            elif command == "gt":
-                asmcode_arithmetic = "D;JGT"                 
-            elif command == "lt":
-                asmcode_arithmetic = "D;JLT"                
-            self.popfromStack() # get arg1            
-            self.Comparison(asmcode_arithmetic) 
+            self.Comparison(asmcode) 
         elif command in ["neg", "not"]:
-            if command == "neg":
-                asmcode_arithmetic = "D=-D"
-            elif command == "not":
-                asmcode_arithmetic = "D=!D"
-            self.popfromStack() # get arg1                
-            self.NegOrNot(asmcode_arithmetic)
-            self.push2Stack()
+            self.NegOrNot(asmcode)
                 
         return
     
