@@ -39,69 +39,71 @@ class CodeWriter:
     def __init__(self, file):
         self.fp = open(file, mode='w')
         self.comparison_label_cnt = 0
-
         return 
 
     def writeAsmCode2File(self, asmcode):
         self.fp.write(asmcode + '\n')
         return
 
-    def incrementSP(self):
-        self.writeAsmCode2File("@SP")
+    def incrementReg(self, reg):
+        self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("M=M+1")        
         return 
 
-    def decrementSP(self):
-        self.writeAsmCode2File("@SP")
+    def decrementReg(self, reg):
+        self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("M=M-1")
         return 
-    
-    def initSP(self):
-        self.writeAsmCode2File("// INIT SP" )
-        self.writeAsmCode2File("@" + str(self.ram_base_addr["stack"]))
-        self.writeAsmCode2File("D=A")        
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("M=D")
-        return 
-    
-    def push2Stack(self, index):
-        self.writeAsmCode2File("@" + str(index))
-        self.writeAsmCode2File("D=A")
-        self.writeAsmCode2File("@SP")
+
+    def setRegrefAddrVal2RegD(self, reg):
+        self.writeAsmCode2File("@" + reg)
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("D=M")
+        return
+
+    def setRegD2RegrefAddr(self, reg):
+        self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("M=D")
+        return
+    
+    def setVal2RegrefAddr(self, reg, val):
+        self.writeAsmCode2File("@" + str(val))  
+        self.writeAsmCode2File("D=A")
+        self.writeAsmCode2File("@" + reg)
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File("M=D")
+        return
 
-        self.incrementSP()        
+    def setVal2Reg(self, reg, val):
+        self.writeAsmCode2File("@" + str(val))
+        self.writeAsmCode2File("D=A")        
+        self.writeAsmCode2File("@" + reg)
+        self.writeAsmCode2File("M=D")
+        return
+    
+    def push2Stack(self, index):
+        self.setVal2RegrefAddr("SP", index)
+        self.incrementReg("SP")        
         return 
     
     def popfromStack(self, index):
-        self.writeAsmCode2File("@" + str(index))  
-        self.writeAsmCode2File("D=A")
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")
-        self.writeAsmCode2File("M=D")
-        
-        self.decrementSP()
+        self.setVal2RegrefAddr("SP", index)
+        self.decrementReg("SP")
         return 
 
     def Arithmetic(self, asmcode_arithmetic):
         # pop arg1
-        self.decrementSP() 
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")        
-        self.writeAsmCode2File("D=M")
-        
+        self.decrementReg("SP")
+        self.setRegrefAddrVal2RegD("SP")
         # pop arg2 and execute calculation
-        self.decrementSP()         
+        self.decrementReg("SP")         
         self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File(asmcode_arithmetic)
-        
         # store result
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")
-        self.writeAsmCode2File("M=D")
-        self.incrementSP()         
+        self.setRegD2RegrefAddr("SP")
+        self.incrementReg("SP")         
         return 
 
     def Comparison(self, asmcode_comparison):
@@ -110,15 +112,11 @@ class CodeWriter:
         label_false = "FALSE_" + label_idx
         label_exit  = "EXIT_"  + label_idx
         self.comparison_label_cnt += 1
-
         # pop arg1        
-        self.decrementSP() 
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")        
-        self.writeAsmCode2File("D=M")
-
+        self.decrementReg("SP")
+        self.setRegrefAddrVal2RegD("SP")        
         # pop arg2 and execute comparison
-        self.decrementSP()         
+        self.decrementReg("SP")         
         self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("D=M-D")
@@ -126,7 +124,6 @@ class CodeWriter:
         self.writeAsmCode2File(asmcode_comparison)
         self.writeAsmCode2File("@" + label_false) 
         self.writeAsmCode2File("0;JMP")  
-
         # true case
         self.writeAsmCode2File("(" + label_true + ")")
         self.writeAsmCode2File("@SP")
@@ -134,36 +131,30 @@ class CodeWriter:
         self.writeAsmCode2File("M=-1") # write true
         self.writeAsmCode2File("@" + label_exit)        
         self.writeAsmCode2File("0;JMP")
-        
         # false case
         self.writeAsmCode2File("(" + label_false + ")")
         self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("M=0")  # write false
-        
         # exit
         self.writeAsmCode2File("(" + label_exit + ")")
-        
         # move sp, because pushed M = -1 or 0
-        self.incrementSP()
+        self.incrementReg("SP")
         return 
 
     def NegOrNot(self, asmcode_arithmetic):
         # pop arg1
-        self.decrementSP() 
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")        
-        self.writeAsmCode2File("D=M")
-
+        self.decrementReg("SP")
+        self.setRegrefAddrVal2RegD("SP")        
         # neg or not
         self.writeAsmCode2File(asmcode_arithmetic)        
         self.writeAsmCode2File("M=D")
 
-        self.incrementSP()
+        self.incrementReg("SP")
         return 
     
     def setFileName(self, FileName):
-        self.initSP()
+        self.setVal2Reg("SP", self.ram_base_addr["stack"])
         return
 
     def writeArithmetic(self, command):
