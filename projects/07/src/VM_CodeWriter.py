@@ -13,9 +13,17 @@ class CodeWriter:
         "unused" : 0x6000  # 0x6000 ~ 0x7fff, unused        
     }
 
-    # reg = {
-    # }
-
+    '''
+        Register Name and Location on RAM
+         "SP"     : 0x0,  # Stack Pointer
+         "LCL"    : 0x1,  # BaseAddr of local segment
+         "ARG"    : 0x2,  # BaseAddr of argument segment
+         "THIS"   : 0x3,  # BaseAddr of this segment in heap
+         "THAT"   : 0x4,  # BaseAddr of that segment in heap
+         "temp"   : 0x5,  # 0x5~0xc for store temp segment value
+         "general" : 0xd  # 0xd~0xf can use as general register
+    '''
+        
     AsmCodeArithmetic = {
         "add" : "D=D+M",
         "sub" : "D=M-D",
@@ -32,71 +40,68 @@ class CodeWriter:
         self.fp = open(file, mode='w')
         self.comparison_label_cnt = 0
 
-        '''
-        Register Name and Location on RAM
-         "SP"     : 0x0,  # Stack Pointer
-         "LCL"    : 0x1,  # BaseAddr of local segment
-         "ARG"    : 0x2,  # BaseAddr of argument segment
-         "THIS"   : 0x3,  # BaseAddr of this segment in heap
-         "THAT"   : 0x4,  # BaseAddr of that segment in heap
-         "temp"   : 0x5,  # 0x5~0xc for store temp segment value
-         "general" : 0xd  # 0xd~0xf can use as general register
-        '''
-        self.SP   = self.ram_base_addr["stack"]
-        self.LCL  = 0
-        self.ARG  = 0
-        self.THIS = 0
-        self.THAT = 0
-        # self.temp[8] = 0
-        # R13, 14, 15
-        
         return 
 
     def writeAsmCode2File(self, asmcode):
         self.fp.write(asmcode + '\n')
         return
 
-    def moveSP(self):
-        self.writeAsmCode2File("@" + str(self.SP))
-        self.writeAsmCode2File("D=A")   
-        self.writeAsmCode2File("@SP")        
-        self.writeAsmCode2File("M=D")
-        return
-    
     def incrementSP(self):
-        self.SP  += 0x1
-        self.moveSP() 
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("M=M+1")        
         return 
 
-    def decementSP(self):
-        self.SP  -= 0x1
-        self.moveSP()         
+    def decrementSP(self):
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("M=M-1")
         return 
     
     def initSP(self):
-        self.SP = self.ram_base_addr["stack"]
         self.writeAsmCode2File("// INIT SP" )
-        self.moveSP()
-        return 
-    
-    def push2Stack(self):
-        self.writeAsmCode2File("@" + str(self.SP))
+        self.writeAsmCode2File("@" + str(self.ram_base_addr["stack"]))
+        self.writeAsmCode2File("D=A")        
+        self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("M=D")
-        self.incrementSP()
         return 
     
-    def popfromStack(self):
-        self.decementSP()
-        self.writeAsmCode2File("@" + str(self.SP))
-        self.writeAsmCode2File("D=M")
+    def push2Stack(self, index):
+        self.writeAsmCode2File("@" + str(index))
+        self.writeAsmCode2File("D=A")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File("M=D")
+
+        self.incrementSP()        
+        return 
+    
+    def popfromStack(self, index):
+        self.writeAsmCode2File("@" + str(index))  
+        self.writeAsmCode2File("D=A")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File("M=D")
+        
+        self.decrementSP()
         return 
 
     def Arithmetic(self, asmcode_arithmetic):
-        self.popfromStack() # get arg1
-        self.SP  -= 0x1
-        self.writeAsmCode2File("@" + str(self.SP))  
+        # pop arg1
+        self.decrementSP() 
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("D=M")
+        
+        # pop arg2 and execute calculation
+        self.decrementSP()         
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
         self.writeAsmCode2File(asmcode_arithmetic)
-        self.push2Stack() # push result        
+        
+        # store result
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()         
         return 
 
     def Comparison(self, asmcode_comparison):
@@ -106,9 +111,16 @@ class CodeWriter:
         label_exit  = "EXIT_"  + label_idx
         self.comparison_label_cnt += 1
 
-        self.popfromStack() # get arg1            
-        self.SP  -= 0x1        
-        self.writeAsmCode2File("@" + str(self.SP))
+        # pop arg1        
+        self.decrementSP() 
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("D=M")
+
+        # pop arg2 and execute comparison
+        self.decrementSP()         
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("D=M-D")
         self.writeAsmCode2File("@" + label_true) 
         self.writeAsmCode2File(asmcode_comparison)
@@ -117,14 +129,18 @@ class CodeWriter:
 
         # true case
         self.writeAsmCode2File("(" + label_true + ")")
-        self.writeAsmCode2File("@" + str(self.SP))
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("M=-1") # write true
         self.writeAsmCode2File("@" + label_exit)        
         self.writeAsmCode2File("0;JMP")
+        
         # false case
         self.writeAsmCode2File("(" + label_false + ")")
-        self.writeAsmCode2File("@" + str(self.SP))        
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("M=0")  # write false
+        
         # exit
         self.writeAsmCode2File("(" + label_exit + ")")
         
@@ -133,10 +149,17 @@ class CodeWriter:
         return 
 
     def NegOrNot(self, asmcode_arithmetic):
-        self.popfromStack() # get arg1                
-        self.writeAsmCode2File("@" + str(self.SP))  
-        self.writeAsmCode2File(asmcode_arithmetic)
-        self.push2Stack()        
+        # pop arg1
+        self.decrementSP() 
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("D=M")
+
+        # neg or not
+        self.writeAsmCode2File(asmcode_arithmetic)        
+        self.writeAsmCode2File("M=D")
+
+        self.incrementSP()
         return 
     
     def setFileName(self, FileName):
@@ -156,39 +179,33 @@ class CodeWriter:
     
     def writePushPop(self, command, segment, index):
         if command == "push":
-            self.writeAsmCode2File("@" + str(index))
-            self.writeAsmCode2File("D=A")
-            
             if segment == "constant":
-                self.push2Stack()                
+                self.push2Stack(index)                
             elif segment == "local":
-                self.push2Stack()                
+                self.push2Stack(index)                
             elif segment == "argument":
-                self.push2Stack()                
+                self.push2Stack(index)                
             elif segment == "this":
-                self.push2Stack()                
+                self.push2Stack(index)                
             elif segment == "that":
-                self.push2Stack()                
+                self.push2Stack(index)                
             elif segment == "temp":
-                self.push2Stack()                
-            
+                self.push2Stack(index)
+                
         elif command == "pop":
             if segment == "constant":
-                self.popfromStack()
+                self.popfromStack(index)
             if segment == "local":
-                self.popfromStack()
+                self.popfromStack(index)
             if segment == "argument":
-                self.popfromStack()
+                self.popfromStack(index)
             if segment == "this":
-                self.popfromStack()
+                self.popfromStack(index)
             if segment == "that":
-                self.popfromStack()
+                self.popfromStack(index)
             if segment == "temp":
-                self.popfromStack()
-                
-            self.writeAsmCode2File("@" + str(index))  
-            self.writeAsmCode2File("M=D")
-                
+                self.popfromStack(index)
+
         return
 
     def close(self):
