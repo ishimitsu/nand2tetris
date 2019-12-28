@@ -1,6 +1,6 @@
-*.pyc
 *.cmp
 *.out
 *.tst
 *.hack
+*.pyc
 *.*~

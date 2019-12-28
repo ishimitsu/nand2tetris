@@ -55,13 +55,14 @@ class CodeWriter:
         self.writeAsmCode2File("M=M-1")
         return 
 
-    def setRegrefAddrVal2RegD(self, reg):
+    def setRegVal(self, reg, val):
+        self.writeAsmCode2File("@" + str(val))
+        self.writeAsmCode2File("D=A")        
         self.writeAsmCode2File("@" + reg)
-        self.writeAsmCode2File("A=M")        
-        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("M=D")
         return
-
-    def setRegD2RegrefAddr(self, reg):
+    
+    def setD2RegrefAddr(self, reg):
         self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("M=D")
@@ -70,39 +71,40 @@ class CodeWriter:
     def setVal2RegrefAddr(self, reg, val):
         self.writeAsmCode2File("@" + str(val))  
         self.writeAsmCode2File("D=A")
-        self.writeAsmCode2File("@" + reg)
-        self.writeAsmCode2File("A=M")
-        self.writeAsmCode2File("M=D")
+        self.setD2RegrefAddr(reg)
         return
 
-    def setVal2Reg(self, reg, val):
-        self.writeAsmCode2File("@" + str(val))
-        self.writeAsmCode2File("D=A")        
+    def getRegrefAddrVal2D(self, reg):
         self.writeAsmCode2File("@" + reg)
-        self.writeAsmCode2File("M=D")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("D=M")
+        return
+
+    def getArithmeticResult2D(self, reg, asmcode_arithmetic):
+        self.writeAsmCode2File("@" + reg)
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File(asmcode_arithmetic)        
         return
     
-    def push2Stack(self, index):
+    def pushVal2Stack(self, index):
         self.setVal2RegrefAddr("SP", index)
         self.incrementReg("SP")        
         return 
     
-    def popfromStack(self, index):
+    def popValfromStack(self, index):
         self.setVal2RegrefAddr("SP", index)
         self.decrementReg("SP")
         return 
-
+    
     def Arithmetic(self, asmcode_arithmetic):
         # pop arg1
         self.decrementReg("SP")
-        self.setRegrefAddrVal2RegD("SP")
+        self.getRegrefAddrVal2D("SP")
         # pop arg2 and execute calculation
-        self.decrementReg("SP")         
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")
-        self.writeAsmCode2File(asmcode_arithmetic)
+        self.decrementReg("SP")
+        self.getArithmeticResult2D("SP", asmcode_arithmetic)
         # store result
-        self.setRegD2RegrefAddr("SP")
+        self.setD2RegrefAddr("SP")
         self.incrementReg("SP")         
         return 
 
@@ -112,14 +114,12 @@ class CodeWriter:
         label_false = "FALSE_" + label_idx
         label_exit  = "EXIT_"  + label_idx
         self.comparison_label_cnt += 1
-        # pop arg1        
+        # pop arg1
         self.decrementReg("SP")
-        self.setRegrefAddrVal2RegD("SP")        
+        self.getRegrefAddrVal2D("SP")
         # pop arg2 and execute comparison
-        self.decrementReg("SP")         
-        self.writeAsmCode2File("@SP")
-        self.writeAsmCode2File("A=M")
-        self.writeAsmCode2File("D=M-D")
+        self.decrementReg("SP")
+        self.getArithmeticResult2D("SP", "D=M-D")
         self.writeAsmCode2File("@" + label_true) 
         self.writeAsmCode2File(asmcode_comparison)
         self.writeAsmCode2File("@" + label_false) 
@@ -145,7 +145,7 @@ class CodeWriter:
     def NegOrNot(self, asmcode_arithmetic):
         # pop arg1
         self.decrementReg("SP")
-        self.setRegrefAddrVal2RegD("SP")        
+        self.getRegrefAddrVal2D("SP")        
         # neg or not
         self.writeAsmCode2File(asmcode_arithmetic)        
         self.writeAsmCode2File("M=D")
@@ -154,7 +154,7 @@ class CodeWriter:
         return 
     
     def setFileName(self, FileName):
-        self.setVal2Reg("SP", self.ram_base_addr["stack"])
+        self.setRegVal("SP", self.ram_base_addr["stack"])
         return
 
     def writeArithmetic(self, command):
@@ -171,31 +171,31 @@ class CodeWriter:
     def writePushPop(self, command, segment, index):
         if command == "push":
             if segment == "constant":
-                self.push2Stack(index)                
+                self.pushVal2Stack(index)                
             elif segment == "local":
-                self.push2Stack(index)                
+                self.pushVal2Stack(index)                
             elif segment == "argument":
-                self.push2Stack(index)                
+                self.pushVal2Stack(index)                
             elif segment == "this":
-                self.push2Stack(index)                
+                self.pushVal2Stack(index)                
             elif segment == "that":
-                self.push2Stack(index)                
+                self.pushVal2Stack(index)                
             elif segment == "temp":
-                self.push2Stack(index)
+                self.pushVal2Stack(index)
                 
         elif command == "pop":
             if segment == "constant":
-                self.popfromStack(index)
+                self.popValfromStack(index)
             if segment == "local":
-                self.popfromStack(index)
+                self.popValfromStack(index)
             if segment == "argument":
-                self.popfromStack(index)
+                self.popValfromStack(index)
             if segment == "this":
-                self.popfromStack(index)
+                self.popValfromStack(index)
             if segment == "that":
-                self.popfromStack(index)
+                self.popValfromStack(index)
             if segment == "temp":
-                self.popfromStack(index)
+                self.popValfromStack(index)
 
         return
 
