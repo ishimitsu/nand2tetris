@@ -55,7 +55,10 @@ class CodeWriter:
         self.writeAsmCode2File("M=M-1")
         return 
 
-    def setRegVal(self, reg, val):
+    def setReg(self, reg, val):
+        '''
+        set "val" to Register "reg"
+        '''
         self.writeAsmCode2File("@" + str(val))
         self.writeAsmCode2File("D=A")        
         self.writeAsmCode2File("@" + reg)
@@ -63,35 +66,53 @@ class CodeWriter:
         return
     
     def setD2RegrefAddr(self, reg):
+        '''
+        set "Regiter D value" to RAM["reg"]
+        '''
         self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("M=D")
         return
     
     def setVal2RegrefAddr(self, reg, val):
+        '''
+        set "val" to RAM["reg"]
+        '''
         self.writeAsmCode2File("@" + str(val))  
         self.writeAsmCode2File("D=A")
         self.setD2RegrefAddr(reg)
         return
 
     def getRegrefAddrVal2D(self, reg):
+        '''
+        get RAM["reg"] value and set it to "Register D"
+        '''
         self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("A=M")        
         self.writeAsmCode2File("D=M")
         return
 
     def getArithmeticResult2D(self, reg, asmcode_arithmetic):
+        '''
+        get RAM["reg"] value, and calculate it, and store the result to Register D
+        '''
         self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("A=M")
         self.writeAsmCode2File(asmcode_arithmetic)        
         return
     
     def pushVal2Stack(self, index):
+        '''
+        set "index" to RAM["SP"], and up SP
+        '''
         self.setVal2RegrefAddr("SP", index)
         self.incrementReg("SP")        
         return 
     
     def popValfromStack(self, index):
+        '''
+        set "index" to RAM["SP"], and down SP
+        '''
         self.setVal2RegrefAddr("SP", index)
         self.decrementReg("SP")
         return 
@@ -113,13 +134,14 @@ class CodeWriter:
         label_true  = "TRUE_"  + label_idx
         label_false = "FALSE_" + label_idx
         label_exit  = "EXIT_"  + label_idx
+        asmcode = self.AsmCodeArithmetic.get("sub", "")                
         self.comparison_label_cnt += 1
         # pop arg1
         self.decrementReg("SP")
         self.getRegrefAddrVal2D("SP")
         # pop arg2 and execute comparison
         self.decrementReg("SP")
-        self.getArithmeticResult2D("SP", "D=M-D")
+        self.getArithmeticResult2D("SP", asmcode)
         self.writeAsmCode2File("@" + label_true) 
         self.writeAsmCode2File(asmcode_comparison)
         self.writeAsmCode2File("@" + label_false) 
@@ -154,7 +176,7 @@ class CodeWriter:
         return 
     
     def setFileName(self, FileName):
-        self.setRegVal("SP", self.ram_base_addr["stack"])
+        self.setReg("SP", self.ram_base_addr["stack"])
         return
 
     def writeArithmetic(self, command):

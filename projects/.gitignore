@@ -3,4 +3,5 @@
 *.tst
 *.hack
 *.pyc
+/__pycache__/
 *.*~
