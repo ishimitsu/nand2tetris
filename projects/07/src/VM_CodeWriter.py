@@ -12,7 +12,7 @@ class CodeWriter:
         "mmio"   : 0x4000, # 0x4000 ~ 0x5fff, for MMIO
         "unused" : 0x6000  # 0x6000 ~ 0x7fff, unused        
     }
-
+    
     '''
         Register Name and Location on RAM
          "SP"     : 0x0,  # Stack Pointer
@@ -23,6 +23,16 @@ class CodeWriter:
          "temp"   : 0x5,  # 0x5~0xc for store temp segment value
          "general" : 0xd  # 0xd~0xf can use as general register
     '''
+
+    Register_for_Segment = {
+         "constant" : "SP",     # Stack Pointer
+         "local"    : "LCL",    # BaseAddr of local segment
+         "argument" : "ARG",    # BaseAddr of argument segment
+         "this"     : "THIS",   # BaseAddr of this segment in heap
+         "that"     : "THAT",   # BaseAddr of that segment in heap
+         "temp"     : "temp",   # 0x5~0xc for store temp segment value
+         "general"  : "general" # 0xd~0xf can use as general register
+    }
         
     AsmCodeArithmetic = {
         "add" : "D=D+M",
@@ -101,22 +111,22 @@ class CodeWriter:
         self.writeAsmCode2File(asmcode_arithmetic)        
         return
     
-    def pushVal2Stack(self, index):
+    def pushVal2Segment(self, reg, index):
         '''
-        set "index" to RAM["SP"], and up SP
+        set "index" to RAM["reg"], and up reg
         '''
-        self.setVal2RegrefAddr("SP", index)
-        self.incrementReg("SP")        
+        self.setVal2RegrefAddr(reg, index)
+        self.incrementReg(reg)        
         return 
     
-    def popValfromStack(self, index):
+    def popValfromSegment(self, index):
         '''
-        set "index" to RAM["SP"], and down SP
+        set "index" to RAM["reg"], and down reg
         '''
-        self.setVal2RegrefAddr("SP", index)
-        self.decrementReg("SP")
+        self.setVal2RegrefAddr(reg, index)
+        self.decrementReg(reg)
         return 
-    
+
     def Arithmetic(self, asmcode_arithmetic):
         # pop arg1
         self.decrementReg("SP")
@@ -176,6 +186,7 @@ class CodeWriter:
         return 
     
     def setFileName(self, FileName):
+        # initialize SP value
         self.setReg("SP", self.ram_base_addr["stack"])
         return
 
@@ -191,73 +202,14 @@ class CodeWriter:
         return
     
     def writePushPop(self, command, segment, index):
-        if command == "push":
-            if segment == "constant":
-                self.pushVal2Stack(index)                
-            elif segment == "local":
-                self.pushVal2Stack(index)                
-            elif segment == "argument":
-                self.pushVal2Stack(index)                
-            elif segment == "this":
-                self.pushVal2Stack(index)                
-            elif segment == "that":
-                self.pushVal2Stack(index)                
-            elif segment == "temp":
-                self.pushVal2Stack(index)
-                
-        elif command == "pop":
-            if segment == "constant":
-                self.popValfromStack(index)
-            if segment == "local":
-                self.popValfromStack(index)
-            if segment == "argument":
-                self.popValfromStack(index)
-            if segment == "this":
-                self.popValfromStack(index)
-            if segment == "that":
-                self.popValfromStack(index)
-            if segment == "temp":
-                self.popValfromStack(index)
-
+        register = self.Register_for_Segment.get(segment, "")
+        if register != "":
+            if command == "push":
+                self.pushVal2Segment(register, index)              
+            elif command == "pop":
+                self.popValfromSegment(register, index)  
         return
 
     def close(self):
         self.fp.close()
         return
-
-'''
-class RAM:
-
-    def local(self, idx):
-        # return LCL value + idx
-        return LCL + idx
-
-    def argument(self, idx):
-        # return ARG value + idx        
-        return ARG + idx
-
-    def this(self, idx):
-        # return THIS value + idx 
-        return THIS + idx
-
-    def that(self, idx):
-        # return THAT value + idx         
-        return THAT + idx
-
-    def pointer(self, idx):
-        # pointer refer THIS or THAT, so return only 3+i<=4
-        return THIS + idx
-
-    def temp(self, idx):
-        # temp is 5~12, so return 5+i<=12
-        return temp + idx
-    
-    def constant(self, idx):
-        # return RAM_base + idx
-        return idx
-
-    def static(self, idx):
-        # return static_base + idx
-        return static + idx
-'''
-    
