@@ -85,6 +85,22 @@ class CodeWriter:
         self.setD2RegrefAddr(reg)
         return
 
+    def setD2Addr(self, addr):
+        '''
+        set "Regiter D value" to RAM[addr]
+        '''
+        self.writeAsmCode2File("@" + addr)
+        self.writeAsmCode2File("M=D")
+        return
+    
+    def getAddr2D(self, addr):
+        '''
+        get RAM[addr] and set to "Regiter D value"
+        '''
+        self.writeAsmCode2File("@" + addr)
+        self.writeAsmCode2File("D=M")
+        return
+    
     def setD2RegrefAddr(self, reg, idx=""):
         '''
         set "Regiter D value" to RAM["reg"+idx]
@@ -217,8 +233,7 @@ class CodeWriter:
             addr = int(index)
             if reg.isdigit:
                 addr += int(reg)
-            self.writeAsmCode2File("@" + str(addr))
-            self.writeAsmCode2File("D=M")            
+            self.getAddr2D(str(addr))
             self.setD2RegrefAddr("SP")
             self.incrementReg("SP")
         return
@@ -235,13 +250,12 @@ class CodeWriter:
             self.getRegrefAddrVal2D("SP")
             self.setD2RegrefAddr(reg, index)
         else: # pointer, temp
-            self.decrementReg("SP")
-            self.getRegrefAddrVal2D("SP")
             addr = int(index)
             if reg.isdigit:
                 addr += int(reg)
-            self.writeAsmCode2File("@" + str(addr))
-            self.writeAsmCode2File("M=D")            
+            self.decrementReg("SP")
+            self.getRegrefAddrVal2D("SP")
+            self.setD2Addr(str(addr))                
         return 
 
     def setFileName(self, FileName):
