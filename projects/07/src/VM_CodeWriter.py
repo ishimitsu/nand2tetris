@@ -30,7 +30,8 @@ class CodeWriter:
          "argument" : "ARG",    # BaseAddr of argument segment
          "this"     : "THIS",   # BaseAddr of this segment in heap
          "that"     : "THAT",   # BaseAddr of that segment in heap
-         "temp"     : "temp",   # 0x5~0xc for store temp segment value
+         "pointer"  : "3",      # 3 + index
+         "temp"     : "5",      # 0x5~0xc for store temp segment value, 5 + index
          "general"  : "general" # 0xd~0xf can use as general register
     }
         
@@ -74,16 +75,7 @@ class CodeWriter:
         self.writeAsmCode2File("@" + reg)
         self.writeAsmCode2File("M=D")
         return
-    
-    def setD2RegrefAddr(self, reg):
-        '''
-        set "Regiter D value" to RAM["reg"]
-        '''
-        self.writeAsmCode2File("@" + reg)
-        self.writeAsmCode2File("A=M")
-        self.writeAsmCode2File("M=D")
-        return
-    
+        
     def setVal2RegrefAddr(self, reg, val):
         '''
         set "val" to RAM["reg"]
@@ -93,13 +85,54 @@ class CodeWriter:
         self.setD2RegrefAddr(reg)
         return
 
-    def getRegrefAddrVal2D(self, reg):
+    def setD2RegrefAddr(self, reg, idx=""):
         '''
-        get RAM["reg"] value and set it to "Register D"
+        set "Regiter D value" to RAM["reg"+idx]
         '''
-        self.writeAsmCode2File("@" + reg)
-        self.writeAsmCode2File("A=M")        
-        self.writeAsmCode2File("D=M")
+        if idx != "":
+            # Once Store Register D value to R13
+            self.writeAsmCode2File("@R13")
+            self.writeAsmCode2File("M=D")  
+            #calculate segment_base_addr + idx and store to R14
+            self.writeAsmCode2File("@" + idx)
+            self.writeAsmCode2File("D=A")
+            self.writeAsmCode2File("@" + reg)
+            self.writeAsmCode2File("D=D+M")
+            self.writeAsmCode2File("@R14")
+            self.writeAsmCode2File("M=D")  
+            # set R13 value to segment_base_addr + idx
+            self.writeAsmCode2File("@R13")
+            self.writeAsmCode2File("D=M")
+            self.writeAsmCode2File("@R14")
+            self.writeAsmCode2File("A=M")
+            self.writeAsmCode2File("M=D")                        
+        else:
+            self.writeAsmCode2File("@" + reg)
+            self.writeAsmCode2File("A=M")
+            self.writeAsmCode2File("M=D")            
+        return
+    
+    def getRegrefAddrVal2D(self, reg, idx=""):
+        '''
+        get RAM["reg"+idx] value and set it to "Register D"
+        '''
+        if idx != "":
+            #calculate segment_base_addr + idx
+            self.writeAsmCode2File("@" + idx)
+            self.writeAsmCode2File("D=A")
+            self.writeAsmCode2File("@" + reg)
+            self.writeAsmCode2File("D=D+M")
+            # Once Store Register D value to R13
+            self.writeAsmCode2File("@R13")
+            self.writeAsmCode2File("M=D")  
+            # get segment_base_addr + idx value to Register D
+            self.writeAsmCode2File("@R13")
+            self.writeAsmCode2File("A=M")
+            self.writeAsmCode2File("D=M")  
+        else:
+            self.writeAsmCode2File("@" + reg)
+            self.writeAsmCode2File("A=M")        
+            self.writeAsmCode2File("D=M")            
         return
 
     def getArithmeticResult2D(self, reg, asmcode_arithmetic):
@@ -111,22 +144,6 @@ class CodeWriter:
         self.writeAsmCode2File(asmcode_arithmetic)        
         return
     
-    def pushVal2Segment(self, reg, index):
-        '''
-        set "index" to RAM["reg"], and up reg
-        '''
-        self.setVal2RegrefAddr(reg, index)
-        self.incrementReg(reg)        
-        return 
-    
-    def popValfromSegment(self, index):
-        '''
-        set "index" to RAM["reg"], and down reg
-        '''
-        self.setVal2RegrefAddr(reg, index)
-        self.decrementReg(reg)
-        return 
-
     def Arithmetic(self, asmcode_arithmetic):
         # pop arg1
         self.decrementReg("SP")
@@ -184,7 +201,49 @@ class CodeWriter:
 
         self.incrementReg("SP")
         return 
+
+    def pushVal2Segment(self, reg, index):
+        '''
+        set "index" to RAM["reg"], and up reg
+        '''
+        if reg == "SP":
+            self.setVal2RegrefAddr(reg, index)
+            self.incrementReg("SP")  
+        elif reg in ["LCL", "ARG", "THIS", "THAT"]:
+            self.getRegrefAddrVal2D(reg, index)
+            self.setD2RegrefAddr("SP")
+            self.incrementReg("SP")
+        else: # pointer, temp
+            addr = int(index)
+            if reg.isdigit:
+                addr += int(reg)
+            self.writeAsmCode2File("@" + str(addr))
+            self.writeAsmCode2File("D=M")            
+            self.setD2RegrefAddr("SP")
+            self.incrementReg("SP")
+        return
     
+    def popValfromSegment(self, reg, index):
+        '''
+        set "index" to RAM["reg"], and down reg
+        '''
+        if reg == "SP":
+            self.setVal2RegrefAddr(reg, index)
+            self.decrementReg("SP")                        
+        elif reg in ["LCL", "ARG", "THIS", "THAT"]:
+            self.decrementReg("SP")
+            self.getRegrefAddrVal2D("SP")
+            self.setD2RegrefAddr(reg, index)
+        else: # pointer, temp
+            self.decrementReg("SP")
+            self.getRegrefAddrVal2D("SP")
+            addr = int(index)
+            if reg.isdigit:
+                addr += int(reg)
+            self.writeAsmCode2File("@" + str(addr))
+            self.writeAsmCode2File("M=D")            
+        return 
+
     def setFileName(self, FileName):
         # initialize SP value
         self.setReg("SP", self.ram_base_addr["stack"])

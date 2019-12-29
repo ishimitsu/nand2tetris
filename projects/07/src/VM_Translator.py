@@ -41,7 +41,7 @@ class VMtranslator:
                 cmd  = parser.args[0]
                 arg1 = parser.arg1()
                 arg2 = parser.arg2()
-                print(parser.cur_cmd, " => ", parser.args)
+                # print(parser.cur_cmd, " => ", parser.args)
 
                 if parser.cmd_type == "C_ARITHMETIC":
                     code_writer.writeArithmetic(cmd)
