@@ -232,8 +232,7 @@ class CodeWriter:
             self.setD2RegrefAddr("SP")
             self.incrementSP()
         elif reg == "static":
-            self.writeAsmCode2File("@" + self.fname + "." + index)
-            self.writeAsmCode2File("D=M")
+            self.getAddr2D(self.fname + "." + index)
             self.setD2RegrefAddr("SP")
             self.incrementSP()            
         elif reg.isdigit(): # pointer, temp            
@@ -257,8 +256,7 @@ class CodeWriter:
         elif reg == "static":
             self.decrementSP()
             self.getRegrefAddrVal2D("SP")
-            self.writeAsmCode2File("@" + self.fname + "." + index)            
-            self.writeAsmCode2File("M=D")
+            self.setD2Addr(self.fname + "." + index)
         elif reg.isdigit(): # pointer, temp
             addr = int(reg) + int(index)            
             self.decrementSP()
