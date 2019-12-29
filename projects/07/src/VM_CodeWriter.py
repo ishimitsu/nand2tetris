@@ -25,14 +25,15 @@ class CodeWriter:
     '''
 
     Register_for_Segment = {
-         "constant" : "SP",     # Stack Pointer
-         "local"    : "LCL",    # BaseAddr of local segment
-         "argument" : "ARG",    # BaseAddr of argument segment
-         "this"     : "THIS",   # BaseAddr of this segment in heap
-         "that"     : "THAT",   # BaseAddr of that segment in heap
-         "pointer"  : "3",      # 3 + index
-         "temp"     : "5",      # 0x5~0xc for store temp segment value, 5 + index
-         "general"  : "general" # 0xd~0xf can use as general register
+         "constant" : "SP",      # Stack Pointer
+         "local"    : "LCL",     # BaseAddr of local segment
+         "argument" : "ARG",     # BaseAddr of argument segment
+         "this"     : "THIS",    # BaseAddr of this segment in heap
+         "that"     : "THAT",    # BaseAddr of that segment in heap
+         "pointer"  : "3",       # 3 + index
+         "temp"     : "5",       # 0x5~0xc for store temp segment value, 5 + index
+         "general"  : "general", # 0xd~0xf can use as general register
+         "static"   : "static"      # segment for static starts from RAM[16]
     }
         
     AsmCodeArithmetic = {
@@ -49,6 +50,7 @@ class CodeWriter:
     
     def __init__(self, file):
         self.fp = open(file, mode='w')
+        self.fname = ""
         self.comparison_label_cnt = 0
         return 
 
@@ -56,13 +58,13 @@ class CodeWriter:
         self.fp.write(asmcode + '\n')
         return
 
-    def incrementReg(self, reg):
-        self.writeAsmCode2File("@" + reg)
+    def incrementSP(self):
+        self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("M=M+1")        
         return 
 
-    def decrementReg(self, reg):
-        self.writeAsmCode2File("@" + reg)
+    def decrementSP(self):
+        self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("M=M-1")
         return 
 
@@ -162,14 +164,14 @@ class CodeWriter:
     
     def Arithmetic(self, asmcode_arithmetic):
         # pop arg1
-        self.decrementReg("SP")
+        self.decrementSP()
         self.getRegrefAddrVal2D("SP")
         # pop arg2 and execute calculation
-        self.decrementReg("SP")
+        self.decrementSP()
         self.getArithmeticResult2D("SP", asmcode_arithmetic)
         # store result
         self.setD2RegrefAddr("SP")
-        self.incrementReg("SP")         
+        self.incrementSP() 
         return 
 
     def Comparison(self, asmcode_comparison):
@@ -180,10 +182,10 @@ class CodeWriter:
         asmcode = self.AsmCodeArithmetic.get("sub", "")                
         self.comparison_label_cnt += 1
         # pop arg1
-        self.decrementReg("SP")
+        self.decrementSP()
         self.getRegrefAddrVal2D("SP")
         # pop arg2 and execute comparison
-        self.decrementReg("SP")
+        self.decrementSP()
         self.getArithmeticResult2D("SP", asmcode)
         self.writeAsmCode2File("@" + label_true) 
         self.writeAsmCode2File(asmcode_comparison)
@@ -204,18 +206,18 @@ class CodeWriter:
         # exit
         self.writeAsmCode2File("(" + label_exit + ")")
         # move sp, because pushed M = -1 or 0
-        self.incrementReg("SP")
+        self.incrementSP()
         return 
 
     def NegOrNot(self, asmcode_arithmetic):
         # pop arg1
-        self.decrementReg("SP")
+        self.decrementSP()
         self.getRegrefAddrVal2D("SP")        
         # neg or not
         self.writeAsmCode2File(asmcode_arithmetic)        
         self.writeAsmCode2File("M=D")
 
-        self.incrementReg("SP")
+        self.incrementSP()
         return 
 
     def pushVal2Segment(self, reg, index):
@@ -224,18 +226,21 @@ class CodeWriter:
         '''
         if reg == "SP":
             self.setVal2RegrefAddr(reg, index)
-            self.incrementReg("SP")  
+            self.incrementSP()  
         elif reg in ["LCL", "ARG", "THIS", "THAT"]:
             self.getRegrefAddrVal2D(reg, index)
             self.setD2RegrefAddr("SP")
-            self.incrementReg("SP")
-        else: # pointer, temp
-            addr = int(index)
-            if reg.isdigit:
-                addr += int(reg)
+            self.incrementSP()
+        elif reg == "static":
+            self.writeAsmCode2File("@" + self.fname + "." + index)
+            self.writeAsmCode2File("D=M")
+            self.setD2RegrefAddr("SP")
+            self.incrementSP()            
+        elif reg.isdigit(): # pointer, temp            
+            addr = int(reg) + int(index)
             self.getAddr2D(str(addr))
             self.setD2RegrefAddr("SP")
-            self.incrementReg("SP")
+            self.incrementSP()
         return
     
     def popValfromSegment(self, reg, index):
@@ -244,23 +249,27 @@ class CodeWriter:
         '''
         if reg == "SP":
             self.setVal2RegrefAddr(reg, index)
-            self.decrementReg("SP")                        
+            self.decrementSP()                        
         elif reg in ["LCL", "ARG", "THIS", "THAT"]:
-            self.decrementReg("SP")
+            self.decrementSP()
             self.getRegrefAddrVal2D("SP")
             self.setD2RegrefAddr(reg, index)
-        else: # pointer, temp
-            addr = int(index)
-            if reg.isdigit:
-                addr += int(reg)
-            self.decrementReg("SP")
+        elif reg == "static":
+            self.decrementSP()
             self.getRegrefAddrVal2D("SP")
-            self.setD2Addr(str(addr))                
+            self.writeAsmCode2File("@" + self.fname + "." + index)            
+            self.writeAsmCode2File("M=D")
+        elif reg.isdigit(): # pointer, temp
+            addr = int(reg) + int(index)            
+            self.decrementSP()
+            self.getRegrefAddrVal2D("SP")
+            self.setD2Addr(str(addr))
         return 
 
     def setFileName(self, FileName):
         # initialize SP value
         self.setReg("SP", self.ram_base_addr["stack"])
+        self.fname = os.path.basename(FileName).split('.', 1)[0]
         return
 
     def writeArithmetic(self, command):
@@ -271,7 +280,6 @@ class CodeWriter:
             self.Comparison(asmcode) 
         elif command in ["neg", "not"]:
             self.NegOrNot(asmcode)
-                
         return
     
     def writePushPop(self, command, segment, index):
@@ -286,3 +294,4 @@ class CodeWriter:
     def close(self):
         self.fp.close()
         return
+
