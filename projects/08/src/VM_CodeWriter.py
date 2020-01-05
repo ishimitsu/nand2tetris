@@ -284,7 +284,7 @@ class CodeWriter:
         '''
         head = label[0]
         if head.isdigit():
-            assert("Invalid label name ", label)
+            print("Invalid label name ", label)
             return
         
         self.writeAsmCode2File("(" + label + ")")
@@ -310,21 +310,96 @@ class CodeWriter:
         self.writeAsmCode2File("D;JNE")
         return
 
-    def writeCall(self, functionName, numArgs):
+    def writeFunction(self, functionName, numLocals):
         '''
-        write asmcode for call command
+        write asmcode for function command
         '''
+        head = functionName[0]
+        if head.isdigit():
+            print("Invalid functionName ", functionName)
+            return
+        
+        self.writeAsmCode2File("(" + functionName + ")")
+        # local[numLocals] clear 0, and also push those vals to stack
+        for i in range(int(numLocals)):
+            self.pushVal2Segment("LCL", str(i))
         return
-
+    
     def writeReturn(self):
         '''
         write asmcode for return command
         '''
+        # FRAME(R13) = LCL
+        self.writeAsmCode2File("@LCL")
+        self.writeAsmCode2File("D=M")        
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("M=D")
+        # Get RET(R14) = *(FRAME-5)
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("D=M")  
+        self.writeAsmCode2File("@5")        
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("@R14")
+        self.writeAsmCode2File("M=D")        
+        # *ARG = pop(), push func-result from Stack to ARG
+        self.decrementSP()
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@ARG")
+        self.writeAsmCode2File("A=M")
+        self.writeAsmCode2File("M=D")
+        # SP=ARG+1
+        self.writeAsmCode2File("@ARG")
+        self.writeAsmCode2File("D=M")    
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("M=D+1")        
+        # THAT = *(FRAME-1)
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("D=M")  
+        self.writeAsmCode2File("@1")  
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("A=D")
+        self.writeAsmCode2File("D=M")         
+        self.writeAsmCode2File("@THAT")
+        self.writeAsmCode2File("M=D")        
+        # THIS = *(FRAME-2)
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("D=M")  
+        self.writeAsmCode2File("@2")  
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("A=D")
+        self.writeAsmCode2File("D=M")                 
+        self.writeAsmCode2File("@THIS")
+        self.writeAsmCode2File("M=D")        
+        # ARG = *(FRAME-3)
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("D=M")  
+        self.writeAsmCode2File("@3")  
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("A=D")
+        self.writeAsmCode2File("D=M")                 
+        self.writeAsmCode2File("@ARG")
+        self.writeAsmCode2File("M=D")        
+        # LCL = *(FRAME-4)
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("D=M")  
+        self.writeAsmCode2File("@4")  
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("A=D")
+        self.writeAsmCode2File("D=M")                 
+        self.writeAsmCode2File("@LCL")
+        self.writeAsmCode2File("M=D")        
+        # goto RET
+        self.writeAsmCode2File("@R13")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("0;JMP")
+        
         return
 
-    def writeFunction(self, functionName, numLocals):
+    def writeCall(self, functionName, numArgs):
         '''
-        write asmcode for function command
+        write asmcode for call command
         '''
         return
     

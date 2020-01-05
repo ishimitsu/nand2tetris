@@ -57,7 +57,7 @@ class VMtranslator:
                 elif parser.cmd_type == "C_FUNCTION":
                     code_writer.writeFunction(arg1, arg2)
                 elif parser.cmd_type == "C_RETURN":
-                    code_writer.writeCall()
+                    code_writer.writeReturn()
                 elif parser.cmd_type == "C_CALL":
                     code_writer.writeCall(arg1, arg2)
                 else:
