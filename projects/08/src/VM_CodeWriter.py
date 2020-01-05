@@ -265,11 +265,55 @@ class CodeWriter:
         return 
 
     def setFileName(self, FileName):
-        # initialize SP value
-        self.setReg("SP", self.ram_base_addr["stack"])
         self.fname = os.path.basename(FileName).split('.', 1)[0]
         return
 
+    def writeInit(self):
+        '''
+        Initialize VM code (Boot Strap)
+        * initialize SP value
+        * call first-VM-func "Sys.init"
+        '''
+        self.setReg("SP", self.ram_base_addr["stack"])
+        # self.writeAsmCode2File("(Sys.init)")  
+        return
+
+    def writeLabel(self, label):
+        '''
+        write asmcode for label command
+        '''
+        return
+
+    def writeGoto(self, label):
+        '''
+        write asmcode for goto command
+        '''
+        return
+
+    def writeIf(self, label):
+        '''
+        write asmcode for if-goto command
+        '''
+        return
+
+    def writeCall(self, functionName, numArgs):
+        '''
+        write asmcode for call command
+        '''
+        return
+
+    def writeReturn(self):
+        '''
+        write asmcode for return command
+        '''
+        return
+
+    def writeFunction(self, functionName, numLocals):
+        '''
+        write asmcode for function command
+        '''
+        return
+    
     def writeArithmetic(self, command):
         asmcode = self.AsmCodeArithmetic.get(command, "")
         if command in ["add", "sub", "and", "or"]:
