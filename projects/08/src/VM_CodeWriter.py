@@ -275,7 +275,7 @@ class CodeWriter:
         * call first-VM-func "Sys.init"
         '''
         self.setReg("SP", self.ram_base_addr["stack"])
-        self.writeAsmCode2File("(Sys.init)")  f
+        self.writeAsmCode2File("(Sys.init)")
         return
 
     def writeLabel(self, label):
