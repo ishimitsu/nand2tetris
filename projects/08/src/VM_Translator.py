@@ -33,6 +33,7 @@ class VMtranslator:
         parser      = Parser(vm_file)
         code_writer = CodeWriter(asm_file)        
         code_writer.setFileName(asm_file)
+        code_writer.writeInit()        
         
         while parser.hasMoreCommands():
             parser.advance()
@@ -45,13 +46,24 @@ class VMtranslator:
 
                 if parser.cmd_type == "C_ARITHMETIC":
                     code_writer.writeArithmetic(cmd)
-                elif parser.cmd_type in ["C_PUSH", "C_POP", "C_FUNCTION", "C_CALL"]:
+                elif parser.cmd_type in ["C_PUSH", "C_POP"]:
                     code_writer.writePushPop(cmd, arg1, arg2)
-                    # elif parser.cmd_type == "C_RETURN":
-                    # else:
+                elif parser.cmd_type == "C_LABEL":
+                    code_writer.writeLabel(arg1)
+                elif parser.cmd_type == "C_GOTO":
+                    code_writer.writeGoto(arg1)
+                elif parser.cmd_type == "C_IF":
+                    code_writer.writeIf(arg1)
+                elif parser.cmd_type == "C_FUNCTION":
+                    code_writer.writeFunction(arg1, arg2)
+                elif parser.cmd_type == "C_RETURN":
+                    code_writer.writeCall()
+                elif parser.cmd_type == "C_CALL":
+                    code_writer.writeCall(arg1, arg2)
+                else:
+                    print("Invalid Command, [", cmd, "]")
                     
         code_writer.close()
-                
         return
 
 if __name__ == '__main__':

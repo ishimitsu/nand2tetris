@@ -275,25 +275,39 @@ class CodeWriter:
         * call first-VM-func "Sys.init"
         '''
         self.setReg("SP", self.ram_base_addr["stack"])
-        # self.writeAsmCode2File("(Sys.init)")  
+        self.writeAsmCode2File("(Sys.init)")  f
         return
 
     def writeLabel(self, label):
         '''
         write asmcode for label command
         '''
+        head = label[0]
+        if head.isdigit():
+            assert("Invalid label name ", label)
+            return
+        
+        self.writeAsmCode2File("(" + label + ")")
         return
 
     def writeGoto(self, label):
         '''
         write asmcode for goto command
         '''
+        self.writeAsmCode2File("@" + label) 
+        self.writeAsmCode2File("0;JMP")  
         return
 
     def writeIf(self, label):
         '''
         write asmcode for if-goto command
         '''
+        # pop result of True or False, and store RegD
+        self.decrementSP()
+        self.getRegrefAddrVal2D("SP")
+        self.writeAsmCode2File("@" + label)
+        # jump label if D!=0(false)
+        self.writeAsmCode2File("D;JNE")
         return
 
     def writeCall(self, functionName, numArgs):
