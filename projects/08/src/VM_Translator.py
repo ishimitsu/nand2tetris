@@ -12,8 +12,6 @@ class VMtranslator:
 
     def open_file_or_dir(self, path):
         vm_file_list = []
-        asm_file_list = []        
-        
         if os.path.isfile(path):
             vm_file  = path
             asm_file = os.path.split(vm_file)[0] + '/' + os.path.basename(vm_file).split('.', 1)[0] + ".asm"
@@ -21,12 +19,13 @@ class VMtranslator:
             asm_file_list.append(asm_file)                       
         elif os.path.isdir(path):
            vm_file_list = glob.glob(path + "/*.vm")
+           asm_file = path + '/' + os.path.basename(path) + ".asm"
            for i in range(len(vm_file_list)):
                vm_file = vm_file_list[i]
-               asm_file = os.path.split(vm_file)[0] + '/' + os.path.basename(vm_file).split('.', 1)[0] + ".asm"
-               asm_file_list.append(asm_file)
+               # asm_file = os.path.split(vm_file)[0] + '/' + os.path.basename(vm_file).split('.', 1)[0] + ".asm"
+               # asm_file_list.append(asm_file)
                
-        return vm_file_list, asm_file_list
+        return vm_file_list, asm_file
 
     
     def vm_translator(self, vm_file, asm_file):
@@ -72,13 +71,12 @@ if __name__ == '__main__':
     if len(args) == 2:
         path = args[1]
         vt   = VMtranslator()
-        vm_flist, asm_flist = vt.open_file_or_dir(path)
+        vm_flist, asm_file = vt.open_file_or_dir(path)
         print(vm_flist)
-        print(asm_flist)
+        print(asm_file)
 
         for i in range(len(vm_flist)):
             vm_file  = vm_flist[i]
-            asm_file = asm_flist[i]            
             vm2asm = vt.vm_translator(vm_file, asm_file)
     else:
         print("Invalid Args!");
