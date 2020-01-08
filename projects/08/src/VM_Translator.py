@@ -16,7 +16,7 @@ class VMtranslator:
             vm_file  = path
             asm_file = os.path.split(vm_file)[0] + '/' + os.path.basename(vm_file).split('.', 1)[0] + ".asm"
             vm_file_list.append(vm_file)
-            asm_file_list.append(asm_file)                       
+            # asm_file_list.append(asm_file)                       
         elif os.path.isdir(path):
            vm_file_list = glob.glob(path + "/*.vm")
            asm_file = path + '/' + os.path.basename(path) + ".asm"

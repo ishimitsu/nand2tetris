@@ -274,8 +274,8 @@ class CodeWriter:
         * initialize SP value
         * call first-VM-func "Sys.init"
         '''
-        self.setReg("SP", self.ram_base_addr["stack"])
-        self.writeAsmCode2File("(Sys.init)")
+        # self.setReg("SP", self.ram_base_addr["stack"])
+        # self.writeAsmCode2File("(Sys.init)")
         return
 
     def writeLabel(self, label):
@@ -322,7 +322,20 @@ class CodeWriter:
         self.writeAsmCode2File("(" + functionName + ")")
         # local[numLocals] clear 0, and also push those vals to stack
         for i in range(int(numLocals)):
-            self.pushVal2Segment("LCL", str(i))
+            # self.pushVal2Segment("LCL", str(i))
+            self.writeAsmCode2File("@LCL")
+            self.writeAsmCode2File("D=M")        
+            self.writeAsmCode2File("@" + str(i))
+            self.writeAsmCode2File("D=D+A")
+            self.writeAsmCode2File("@R13")
+            self.writeAsmCode2File("M=D")
+            self.writeAsmCode2File("@0")
+            self.writeAsmCode2File("D=A") 
+            self.writeAsmCode2File("@R13")
+            self.writeAsmCode2File("A=M")            
+            self.writeAsmCode2File("M=D")             
+            self.incrementSP()
+            
         return
     
     def writeReturn(self):
@@ -339,6 +352,8 @@ class CodeWriter:
         self.writeAsmCode2File("D=M")  
         self.writeAsmCode2File("@5")        
         self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("A=D")
+        self.writeAsmCode2File("D=M")         
         self.writeAsmCode2File("@R14")
         self.writeAsmCode2File("M=D")        
         # *ARG = pop(), push func-result from Stack to ARG
@@ -391,8 +406,8 @@ class CodeWriter:
         self.writeAsmCode2File("@LCL")
         self.writeAsmCode2File("M=D")        
         # goto RET
-        self.writeAsmCode2File("@R13")
-        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("@R14")
+        self.writeAsmCode2File("A=M")
         self.writeAsmCode2File("0;JMP")
         
         return
@@ -401,6 +416,58 @@ class CodeWriter:
         '''
         write asmcode for call command
         '''
+        return_address_label = "return-address_" + functionName
+        # push return-address
+        self.writeAsmCode2File("@" + return_address_label)
+        self.writeAsmCode2File("D=A")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()        
+        # push LCL, ARG, THIS, THAT
+        self.writeAsmCode2File("@LCL")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()        
+        self.writeAsmCode2File("@ARG")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()        
+        self.writeAsmCode2File("@THIS")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()        
+        self.writeAsmCode2File("@THAT")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("A=M")        
+        self.writeAsmCode2File("M=D")
+        self.incrementSP()        
+        # ARG = SP-numArgs-5
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@" + numArgs)
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("@5")
+        self.writeAsmCode2File("D=D-A")
+        self.writeAsmCode2File("@ARG")
+        self.writeAsmCode2File("M=D") 
+        # LCL = SP
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("D=M")
+        self.writeAsmCode2File("@LCL")
+        self.writeAsmCode2File("M=D")         
+        # goto functionName
+        self.writeAsmCode2File("@" + functionName)
+        self.writeAsmCode2File("0;JMP")        
+        # label (return-address)
+        self.writeAsmCode2File("(" + return_address_label + ")")
         return
     
     def writeArithmetic(self, command):
