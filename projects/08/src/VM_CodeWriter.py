@@ -48,11 +48,12 @@ class CodeWriter:
         "not" : "D=!D"        
     }
     
-    def __init__(self, file):
-        self.fp = open(file, mode='w')
-        self.fname = ""
-        self.comparison_label_cnt = 0
-        self.return_address_label_cnt = 0        
+    def __init__(self, asm_file):
+        self.fp = open(asm_file, mode='w')
+        self.asm_fname = os.path.basename(asm_file).split('.', 1)[0]
+        self.vm_fname = ""
+        self.comparison_label_cnt     = 0
+        self.return_address_label_cnt = 0
         return 
 
     def writeAsmCode2File(self, asmcode):
@@ -238,9 +239,9 @@ class CodeWriter:
             self.setD2RegrefAddr("SP")
             self.incrementSP()
         elif reg == "static":
-            self.getAddr2D(self.fname + "." + index)
+            self.getAddr2D(self.vm_fname + "." + index)
             self.setD2RegrefAddr("SP")
-            self.incrementSP()            
+            self.incrementSP()
         elif reg.isdigit(): # pointer, temp            
             addr = int(reg) + int(index)
             self.getAddr2D(str(addr))
@@ -262,7 +263,7 @@ class CodeWriter:
         elif reg == "static":
             self.decrementSP()
             self.getRegrefAddrVal2D("SP")
-            self.setD2Addr(self.fname + "." + index)
+            self.setD2Addr(self.vm_fname + "." + index)
         elif reg.isdigit(): # pointer, temp
             addr = int(reg) + int(index)            
             self.decrementSP()
@@ -270,8 +271,8 @@ class CodeWriter:
             self.setD2Addr(str(addr))
         return 
 
-    def setFileName(self, FileName):
-        self.fname = os.path.basename(FileName).split('.', 1)[0]
+    def setFileName(self, VM_FileName):
+        self.vm_fname = os.path.basename(VM_FileName).split('.', 1)[0]
         return
 
     def writeInit(self):

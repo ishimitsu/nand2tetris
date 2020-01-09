@@ -29,12 +29,12 @@ class VMtranslator:
 
     
     def vm_translator(self, vm_flist, asm_file):
-        code_writer = CodeWriter(asm_file)        
-        code_writer.setFileName(asm_file)
+        code_writer = CodeWriter(asm_file)  
         code_writer.writeInit()        
 
         for i in range(len(vm_flist)):
             vm_file = vm_flist[i]
+            code_writer.setFileName(vm_file)            
             parser  = Parser(vm_file)            
         
             while parser.hasMoreCommands():
