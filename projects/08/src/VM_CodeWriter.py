@@ -52,12 +52,18 @@ class CodeWriter:
         self.fp = open(file, mode='w')
         self.fname = ""
         self.comparison_label_cnt = 0
+        self.return_address_label_cnt = 0        
         return 
 
     def writeAsmCode2File(self, asmcode):
         self.fp.write(asmcode + '\n')
         return
 
+    def writeDebugAsmCode2File(self, asmcode):
+        if not __debug__:
+            self.writeAsmCode2File(asmcode)            
+        return
+    
     def incrementSP(self):
         self.writeAsmCode2File("@SP")
         self.writeAsmCode2File("M=M+1")        
@@ -271,11 +277,16 @@ class CodeWriter:
     def writeInit(self):
         '''
         Initialize VM code (Boot Strap)
-        * initialize SP value
-        * call first-VM-func "Sys.init"
         '''
-        # self.setReg("SP", self.ram_base_addr["stack"])
-        # self.writeAsmCode2File("(Sys.init)")
+        # initialize SP=256
+        self.writeDebugAsmCode2File("// Initialize VM code")
+        self.writeAsmCode2File("@256")
+        self.writeAsmCode2File("D=A")        
+        self.writeAsmCode2File("@SP")
+        self.writeAsmCode2File("M=D")
+
+        # call first-VM-func "Sys.init"
+        self.writeCall("Sys.init")
         return
 
     def writeLabel(self, label):
@@ -294,6 +305,7 @@ class CodeWriter:
         '''
         write asmcode for goto command
         '''
+        self.writeDebugAsmCode2File("//goto " + label)        
         self.writeAsmCode2File("@" + label) 
         self.writeAsmCode2File("0;JMP")  
         return
@@ -302,6 +314,7 @@ class CodeWriter:
         '''
         write asmcode for if-goto command
         '''
+        self.writeDebugAsmCode2File("//if-goto " + label) 
         # pop result of True or False, and store RegD
         self.decrementSP()
         self.getRegrefAddrVal2D("SP")
@@ -310,10 +323,11 @@ class CodeWriter:
         self.writeAsmCode2File("D;JNE")
         return
 
-    def writeFunction(self, functionName, numLocals):
+    def writeFunction(self, functionName, numLocals="0"):
         '''
         write asmcode for function command
         '''
+        self.writeDebugAsmCode2File("// function " + functionName + " " + numLocals)         
         head = functionName[0]
         if head.isdigit():
             print("Invalid functionName ", functionName)
@@ -342,6 +356,7 @@ class CodeWriter:
         '''
         write asmcode for return command
         '''
+        self.writeDebugAsmCode2File("// return") 
         # FRAME(R13) = LCL
         self.writeAsmCode2File("@LCL")
         self.writeAsmCode2File("D=M")        
@@ -412,11 +427,13 @@ class CodeWriter:
         
         return
 
-    def writeCall(self, functionName, numArgs):
+    def writeCall(self, functionName, numArgs="0"):
         '''
         write asmcode for call command
         '''
-        return_address_label = "return-address_" + functionName
+        self.writeDebugAsmCode2File("// call " + functionName + " " + numArgs)  
+        return_address_label = "return-address_" + str(self.return_address_label_cnt)
+        self.return_address_label_cnt +=1
         # push return-address
         self.writeAsmCode2File("@" + return_address_label)
         self.writeAsmCode2File("D=A")
@@ -471,6 +488,7 @@ class CodeWriter:
         return
     
     def writeArithmetic(self, command):
+        self.writeDebugAsmCode2File("// " + command)          
         asmcode = self.AsmCodeArithmetic.get(command, "")
         if command in ["add", "sub", "and", "or"]:
             self.Arithmetic(asmcode)  
@@ -481,6 +499,7 @@ class CodeWriter:
         return
     
     def writePushPop(self, command, segment, index):
+        self.writeDebugAsmCode2File("// " + command + " " + segment + " " + index)         
         register = self.Register_for_Segment.get(segment, "")
         if register != "":
             if command == "push":

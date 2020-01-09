@@ -28,39 +28,42 @@ class VMtranslator:
         return vm_file_list, asm_file
 
     
-    def vm_translator(self, vm_file, asm_file):
-        parser      = Parser(vm_file)
+    def vm_translator(self, vm_flist, asm_file):
         code_writer = CodeWriter(asm_file)        
         code_writer.setFileName(asm_file)
         code_writer.writeInit()        
-        
-        while parser.hasMoreCommands():
-            parser.advance()
-            cmd_type = parser.commandType()
-            if cmd_type != "NOT_COMMAND":
-                cmd  = parser.args[0]
-                arg1 = parser.arg1()
-                arg2 = parser.arg2()
-                # print(parser.cur_cmd, " => ", parser.args)
 
-                if parser.cmd_type == "C_ARITHMETIC":
-                    code_writer.writeArithmetic(cmd)
-                elif parser.cmd_type in ["C_PUSH", "C_POP"]:
-                    code_writer.writePushPop(cmd, arg1, arg2)
-                elif parser.cmd_type == "C_LABEL":
-                    code_writer.writeLabel(arg1)
-                elif parser.cmd_type == "C_GOTO":
-                    code_writer.writeGoto(arg1)
-                elif parser.cmd_type == "C_IF":
-                    code_writer.writeIf(arg1)
-                elif parser.cmd_type == "C_FUNCTION":
-                    code_writer.writeFunction(arg1, arg2)
-                elif parser.cmd_type == "C_RETURN":
-                    code_writer.writeReturn()
-                elif parser.cmd_type == "C_CALL":
-                    code_writer.writeCall(arg1, arg2)
-                else:
-                    print("Invalid Command, [", cmd, "]")
+        for i in range(len(vm_flist)):
+            vm_file = vm_flist[i]
+            parser  = Parser(vm_file)            
+        
+            while parser.hasMoreCommands():
+                parser.advance()
+                cmd_type = parser.commandType()
+                if cmd_type != "NOT_COMMAND":
+                    cmd  = parser.args[0]
+                    arg1 = parser.arg1()
+                    arg2 = parser.arg2()
+                    # print(parser.cur_cmd, " => ", parser.args)
+                    
+                    if parser.cmd_type == "C_ARITHMETIC":
+                        code_writer.writeArithmetic(cmd)
+                    elif parser.cmd_type in ["C_PUSH", "C_POP"]:
+                        code_writer.writePushPop(cmd, arg1, arg2)
+                    elif parser.cmd_type == "C_LABEL":
+                        code_writer.writeLabel(arg1)
+                    elif parser.cmd_type == "C_GOTO":
+                        code_writer.writeGoto(arg1)
+                    elif parser.cmd_type == "C_IF":
+                        code_writer.writeIf(arg1)
+                    elif parser.cmd_type == "C_FUNCTION":
+                        code_writer.writeFunction(arg1, arg2)
+                    elif parser.cmd_type == "C_RETURN":
+                        code_writer.writeReturn()
+                    elif parser.cmd_type == "C_CALL":
+                        code_writer.writeCall(arg1, arg2)
+                    else:
+                        print("Invalid Command, [", cmd, "]")
                     
         code_writer.close()
         return
@@ -74,10 +77,7 @@ if __name__ == '__main__':
         vm_flist, asm_file = vt.open_file_or_dir(path)
         print(vm_flist)
         print(asm_file)
-
-        for i in range(len(vm_flist)):
-            vm_file  = vm_flist[i]
-            vm2asm = vt.vm_translator(vm_file, asm_file)
+        vm2asm  = vt.vm_translator(vm_flist, asm_file)
     else:
         print("Invalid Args!");
         
