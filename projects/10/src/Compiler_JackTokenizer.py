@@ -5,23 +5,24 @@ import pprint
 
 class JackTokenizer:
 
-    tokenType_keyword = ['class', 'constructor', 'function',
-                         'method', 'field', 'static', 'var',
-                         'int', 'char', 'boolean', 'void',
-                         'true', 'false', 'null', 'this',
-                         'let', 'do', 'if', 'else',
-                         'while', 'return']                         
-    tokenType_symbol = ['{', '}', '(', ')', '[', ']', '.', ',',
-                        ';', '+', '-', '*', '/', '&',
-                        '|', '<', '>', '=', '~']                         
+    # keyworkd, symbol are terminal of Jack
+    terminal_keyword = ['class', 'constructor', 'function',
+                        'method', 'field', 'static', 'var',
+                        'int', 'char', 'boolean', 'void',
+                        'true', 'false', 'null', 'this',
+                        'let', 'do', 'if', 'else',
+                        'while', 'return']                         
+    terminal_symbol = ['{', '}', '(', ')', '[', ']', '.', ',',
+                       ';', '+', '-', '*', '/', '&',
+                       '|', '<', '>', '=', '~']                         
      
-    tokenType_keyword = {
-        "keyword"      : "KEYWORD",
-        "symbol"       : "SYMBOL",
-        "identifier"   : "IDENTIFIER",
-        "int_const"    : "INT_CONST",
-        "string_const" : "STRING_CONST"
-    }
+    # tokenType_dict = {
+    #     "keyword"      : "KEYWORD",
+    #     "symbol"       : "SYMBOL",
+    #     "identifier"   : "IDENTIFIER",
+    #     "int_const"    : "INT_CONST",
+    #     "string_const" : "STRING_CONST"
+    # }
     
     keyWord_dict = {
         "class"       : "CLASS",
@@ -46,23 +47,38 @@ class JackTokenizer:
         "null"        : "NULL",
         "this"        : "THIS"
     }
-    
+
     def __init__(self, file):
         self.token_list = []
         self.cur_token  = ""
         self.t_idx = self.t_max = 0
+        # self.cur_line = self.l_max = 0
         
         if os.path.isfile(file):
             fp = open(file)
             readlines = fp.readlines()
+            skip = 0
             for i in range(len(readlines)):
                 line   = readlines[i]
                 tokens = line.split()
+
                 for j in range(len(tokens)):
-                    self.token_list.append(tokens[j])
-                self.t_max += len(tokens)
+                    # skil comments
+                    if tokens[j] == "//":
+                        # skip until end of this lines
+                        break
+                    elif tokens[j] == "/**" or tokens[j] == "/*":
+                        # skip until */ found
+                        skip = 1                                                
+                    elif skip == 1 and tokens[j] == "*/":
+                        skip = 0                        
+                        continue
+                        
+                    if(skip == 0):
+                        self.token_list.append(tokens[j])
+                        self.t_max += 1
         fp.close()
-        print("t_max = ", self.t_max)
+        # print("t_max = ", self.t_max)
         
         return
 
@@ -76,13 +92,13 @@ class JackTokenizer:
 
     def tokenType(self):
         token = self.cur_token
-        token_type = "NOT_TOKEN"        
+        token_type = "NON_TERMINAL"        
         if( len(token) == 0):
-            return "NOT_TOKEN"
+            return "NON_TERMINAL"
             
-        if token in self.tokenType_keyword:
+        if token in self.terminal_keyword:
             token_type = "KEYWORD"
-        elif token in self.tokenType_keyword:            
+        elif token in self.terminal_keyword:            
             token_type = "SYMBOL"
         elif token.isdigit():
             int_token = int(token)
@@ -93,9 +109,10 @@ class JackTokenizer:
         elif not(token[:1].isdigit()):
             token_type = "IDENTIFIER"  
         else:
-            token_type = "NOT_TOKEN"
+            token_type = "NON_TERMINAL"
 
-        print("token = ", token, ", type = ", token_type)            
+        print("token = ", token)
+        # print("token = ", token, ", type = ", token_type)                    
         return token_type
 
     def keyWord(self):
@@ -104,7 +121,7 @@ class JackTokenizer:
             return "NOT_KEYWORD"
         
         keyword_head = keyword[0]
-        keyword_type = self.keyWord.get(keyword_head, "NOT_KEYWORD")
+        keyword_type = self.keyWord_dict.get(keyword_head, "NOT_KEYWORD")
         return keyword_type
 
     def symbol(self):
