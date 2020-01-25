@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import pprint
+import re  # for re.split
 
 class JackTokenizer:
 
@@ -14,16 +15,9 @@ class JackTokenizer:
                         'while', 'return']                         
     terminal_symbol = ['{', '}', '(', ')', '[', ']', '.', ',',
                        ';', '+', '-', '*', '/', '&',
-                       '|', '<', '>', '=', '~']                         
+                       '|', '<', '>', '=', '~']
+    term_symbol_regexp = '([' + re.escape('{}()[].,;\+-*/&|<>=~') + '])'
      
-    # tokenType_dict = {
-    #     "keyword"      : "KEYWORD",
-    #     "symbol"       : "SYMBOL",
-    #     "identifier"   : "IDENTIFIER",
-    #     "int_const"    : "INT_CONST",
-    #     "string_const" : "STRING_CONST"
-    # }
-    
     keyWord_dict = {
         "class"       : "CLASS",
         "method"      : "METHOD",
@@ -52,36 +46,83 @@ class JackTokenizer:
         self.token_list = []
         self.cur_token  = ""
         self.t_idx = self.t_max = 0
-        # self.cur_line = self.l_max = 0
         
         if os.path.isfile(file):
             fp = open(file)
             readlines = fp.readlines()
-            skip = 0
+            skip_endcomment = False
             for i in range(len(readlines)):
-                line   = readlines[i]
-                tokens = line.split()
-
-                for j in range(len(tokens)):
-                    # skil comments
-                    if tokens[j] == "//":
-                        # skip until end of this lines
-                        break
-                    elif tokens[j] == "/**" or tokens[j] == "/*":
-                        # skip until */ found
-                        skip = 1                                                
-                    elif skip == 1 and tokens[j] == "*/":
-                        skip = 0                        
+                line  = readlines[i]
+                words = self.splitLine2Words(line)                
+                skip_endline = False
+                
+                for j in range(len(words)):
+                    # isComments
+                    if words[j] == "//":
+                        skip_endline = True # skip this line
+                        continue                        
+                    elif words[j] == "/**" or words[j] == "/*":
+                        skip_endcomment = True  # skip until */ found
+                    elif skip_endcomment and words[j] == "*/":
+                        skip_endcomment = False # end of comments
                         continue
                         
-                    if(skip == 0):
-                        self.token_list.append(tokens[j])
-                        self.t_max += 1
+                    if (not skip_endline) and (not skip_endcomment):
+                        self.t_max += self.cvtWords2Token(words[j], self.token_list)
         fp.close()
-        # print("t_max = ", self.t_max)
         
         return
 
+    def splitLine2Words(self, line):
+        '''
+        separate line to words by space and '\n'.
+        But double_quoted word (like "hoge piyo") exceptionally treat as a word.
+        '''
+        words = []
+        w_start = dquote_start = 0
+        isWord = isDquote = False
+        line = line.strip() # remove head and tail spaces and '\n'
+        for i in range(len(line)):
+            if line[i] == '"':
+                # is double_quoted string?                
+                if isDquote == False:
+                    dquote_start = i
+                    isDquote = True
+                else:
+                    word = line[dquote_start:i+1]
+                    words.append(word)
+                    dquote_start = 0
+                    isDquote = False                    
+            elif isDquote == False:
+                # separate by space
+                if line[i] != r' ' and isWord == False:
+                    w_start = i
+                    isWord  = True
+                    
+                if (line[i] == r' ' or i == len(line)-1) and isWord == True:
+                    w_end = i
+                    if i == len(line)-1:                    
+                        w_end = i+1
+                    word = line[w_start:w_end] 
+                    words.append(word)
+                    w_start = 0
+                    isWord = False
+                    
+        return words
+    
+    def cvtWords2Token(self, words, token_list):
+        '''
+        separate words by term_symbol_regexp, and treat each of them as a token.
+        '''
+        token_cnt = 0
+        separated_w = re.split(self.term_symbol_regexp, words)
+        for i in range(len(separated_w)):
+            if len(separated_w[i]) > 0:
+                token_list.append(separated_w[i])
+                token_cnt += 1
+
+        return token_cnt
+    
     def hasMoreTokens(self):
         return self.t_idx < self.t_max
 
@@ -93,50 +134,48 @@ class JackTokenizer:
     def tokenType(self):
         token = self.cur_token
         token_type = "NON_TERMINAL"        
-        if( len(token) == 0):
-            return "NON_TERMINAL"
             
         if token in self.terminal_keyword:
             token_type = "KEYWORD"
-        elif token in self.terminal_keyword:            
+        elif token in self.terminal_symbol: 
             token_type = "SYMBOL"
         elif token.isdigit():
             int_token = int(token)
             if int_token >= 0 and int_token <= 32767:
                 token_type = "INT_CONST"
-        elif not ('"' in token and '\n' in token and '\r\n' in token):
+        elif token[0] == '"' and not (token in ['\n', '\r\n']):
             token_type = "STRING_CONST"
-        elif not(token[:1].isdigit()):
+        elif not(token[0].isdigit()):
             token_type = "IDENTIFIER"  
         else:
             token_type = "NON_TERMINAL"
 
-        print("token = ", token)
-        # print("token = ", token, ", type = ", token_type)                    
         return token_type
 
     def keyWord(self):
-        keyword = self.cur_token.split()
-        if( len(keyword) == 0):
-            return "NOT_KEYWORD"
-        
-        keyword_head = keyword[0]
-        keyword_type = self.keyWord_dict.get(keyword_head, "NOT_KEYWORD")
-        return keyword_type
+        return self.keyWord_dict.get(self.cur_token, "INVALID_KEYWORD")
 
     def symbol(self):
         # can call tokenType=SYMBOL
-        return ''
+        if self.cur_token == self.terminal_symbol:
+            ret = self.cur_token
+        else:
+            ret = "INVALID_SYMBOL"
+        return self.cur_token
 
     def identifier(self):
         # can call tokenType=IDENTIFIER
-        return ""
+        return self.cur_token
     
     def intVal(self):
         # can call tokenType=INT_CONST
-        return 0
+        ret = 0
+        if self.cur_token.isdigit:
+            ret = int(self.cur_token)
+        return ret
     
     def stringVal(self):
         # can call tokenType=STRING_CONST
-        return ""
+        rm_dquote_token = self.cur_token.strip('"') # remove double quote from token
+        return rm_dquote_token
     

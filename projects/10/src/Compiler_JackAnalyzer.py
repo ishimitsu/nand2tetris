@@ -36,7 +36,20 @@ class JackAnalyzer:
             while jt.hasMoreTokens():
                 jt.advance()
                 token_type = jt.tokenType()
-                # if token_type != "NOT_TOKEN":
+                # print(jt.cur_token, "\t =>\t", token_type, end="\n")  
+                
+                if token_type   == "KEYWORD":
+                    keyWord = jt.keyWord()
+                elif token_type == "SYMBOL":
+                    symbol  = jt.symbol()
+                elif token_type == "INT_CONST":
+                    intval  = jt.intVal()
+                elif token_type == "STRING_CONST":
+                    strval  = jt.stringVal()
+                elif token_type == "IDENTIFIER":
+                    idt     = jt.identifier()
+                else :
+                    print("Ignored Invalid token: ", jt.cur_token)
                 
         return
 
