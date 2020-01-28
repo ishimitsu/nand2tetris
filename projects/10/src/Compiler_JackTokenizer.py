@@ -157,10 +157,6 @@ class JackTokenizer:
 
     def symbol(self):
         # can call tokenType=SYMBOL
-        if self.cur_token == self.terminal_symbol:
-            ret = self.cur_token
-        else:
-            ret = "INVALID_SYMBOL"
         return self.cur_token
 
     def identifier(self):
