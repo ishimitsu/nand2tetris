@@ -45,14 +45,13 @@ class CompilationEngine:
         # self.fp = open(file, mode='w')
         self.tokenizer    = tokenizer
         self.indent_level = 0
+        self.indent       = ""
         return
 
     def writeFile(self, code):
-        # TODO: add TAB for indent        
-        # self.fp.write(code + '\n')
-        for i in range(self.indent_level):
-            print("  ", end="")
-        print(code) # debug
+        indent = "  " * self.indent_level        
+        # self.fp.write(indent + code + '\n')
+        print(indent + code) # debug
         return
 
     def writeTerminal(self, expect_type, expect=""):
@@ -99,11 +98,13 @@ class CompilationEngine:
         return
     def writeNonTerminalTagStart(self, tag):
         markup = "<" + tag + ">"
-        self.writeFile(markup)        
+        self.writeFile(markup)
+        self.indent_level += 1
         return
     def writeNonTerminalTagEnd(self, tag):
+        self.indent_level -= 1        
         markup = "</" + tag + ">"
-        self.writeFile(markup)        
+        self.writeFile(markup)
         return
     
     def close(self):
@@ -115,10 +116,6 @@ class CompilationEngine:
         'class' className '{' classVarDec* subroutineDec* '}'
         '''
         self.writeNonTerminalTagStart("class")
-        # self.nextToken()
-        # if not self.tokenizer.cur_token == "class":
-        #     print("This JackFile doesn't start keyword \"class\"!")
-        #     return
         
         self.writeTerminal("KEYWORD", "class") # 'class'
         self.writeTerminal("IDENTIFIER")       # className    
