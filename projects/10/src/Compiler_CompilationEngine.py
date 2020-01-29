@@ -76,7 +76,7 @@ class CompilationEngine:
         elif expect_type == "SYMBOL" and token_type == "SYMBOL":
             symbol = self.tokenizer.symbol()
             if not re.fullmatch(expect_term, symbol) == None:
-                ret = True                
+                ret = True
         elif expect_type == "INT_CONST" and token_type == "INT_CONST":
             ret = True                         
         elif expect_type == "STRING_CONST" and token_type == "STRING_CONST":
@@ -151,9 +151,9 @@ class CompilationEngine:
         # classVarDec*
         while self.isTerminal("KEYWORD", "static|field") == True:
             self.compileClassVarDec()
-
-        # TODO        
-        self.compileSubroutine()  # subroutineDec*
+        # subroutineDec*        
+        while self.isTerminal("KEYWORD", "constructor|function|method") == True:     
+            self.compileSubroutine()  
         
         self.writeTerminal("SYMBOL", "}")
         self.writeNonTerminalTagEnd("class")        
@@ -169,13 +169,11 @@ class CompilationEngine:
         self.writeTerminal("IDENTIFIER") # varName
         
         # (',' varName)* ;
-        if self.isTerminal("SYMBOL", ",") == True:
-            while self.isTerminal("SYMBOL", ",") == True:
-                self.writeTerminal("SYMBOL", ",")
-                self.writeTerminal("IDENTIFIER") # varName
+        while self.isTerminal("SYMBOL", ",") == True:
+            self.writeTerminal("SYMBOL", ",")
+            self.writeTerminal("IDENTIFIER") # varName
                 
         self.writeTerminal("SYMBOL", ";")
-        
         self.writeNonTerminalTagEnd("classVarDec")
         return 
 
@@ -197,7 +195,13 @@ class CompilationEngine:
         '''        
         self.writeNonTerminalTagStart("subroutineDec")
         self.writeTerminal("KEYWORD", "constructor|function|method")
-        self.writeTerminal("KEYWORD", "void|type")        
+
+        # ('void' | type)
+        if self.isTerminal("KEYWORD", "void"):
+            self.writeTerminal("KEYWORD", "void")
+        else:
+            self.compileType()
+            
         self.writeTerminal("IDENTIFIER") # subroutineName
         self.compileParameterList()
         self.compileSubroutineBody() 
@@ -209,15 +213,29 @@ class CompilationEngine:
         ((type varName) (',' type varName)*)?  
         '''        
         self.writeNonTerminalTagStart("parameterList")
-        # TODO
+        if self.isTerminal("SYMBOL", "\("):
+            self.nextToken() # ignore "("
+            
+        self.compileType()
+        self.writeTerminal("IDENTIFIER") # varName
+        
+        # (',' type varName)*
+        while self.isTerminal("SYMBOL", ",") == True:
+            self.writeTerminal("SYMBOL", ",")
+            self.compileType()
+            self.writeTerminal("IDENTIFIER") # varName
+
+        if self.isTerminal("SYMBOL", "\)"):
+            self.nextToken() # ignore ")"
+
         self.writeNonTerminalTagEnd("parameterList")        
         return 
 
     def compileSubroutineBody(self):
         '''  '{' varDec* statements '}'  '''        
-        self.writeNonTerminalTagStart("parameterList")
+        self.writeNonTerminalTagStart("subroutineBody")
         # TODO        
-        self.writeNonTerminalTagEnd("parameterList")        
+        self.writeNonTerminalTagEnd("subroutineBody")        
         return 
     
     def compileVarDec(self):
