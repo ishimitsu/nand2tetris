@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import pprint
+import re
 
 class CompilationEngine:
 
@@ -12,40 +13,39 @@ class CompilationEngine:
         "STRING_CONST": "stringConstant",
         "IDENTIFIER"  : "identifier"
     }
-    terminal_keyWord = {
-        "class"       : "CLASS",
-        "method"      : "METHOD",
-        "function"    : "FUNCTION",
-        "constructor" : "CONSTRUCTOR",
-        "int"         : "INT",
-        "boolean"     : "BOOLEAN",
-        "char"        : "CHAR",
-        "void"        : "VOID",
-        "var"         : "VAR",
-        "static"      : "STATIC",
-        "field"       : "FIELD",
-        "let"         : "LET",
-        "do"          : "DO",
-        "if"          : "IF",
-        "else"        : "ELSE",
-        "while"       : "WHILE",
-        "return"      : "RETURN",
-        "true"        : "TRUE",
-        "false"       : "FALSE",
-        "null"        : "NULL",
-        "this"        : "THIS"
-    }
+    # terminal_keyWord = {
+    #     "class"       : "CLASS",
+    #     "method"      : "METHOD",
+    #     "function"    : "FUNCTION",
+    #     "constructor" : "CONSTRUCTOR",
+    #     "int"         : "INT",
+    #     "boolean"     : "BOOLEAN",
+    #     "char"        : "CHAR",
+    #     "void"        : "VOID",
+    #     "var"         : "VAR",
+    #     "static"      : "STATIC",
+    #     "field"       : "FIELD",
+    #     "let"         : "LET",
+    #     "do"          : "DO",
+    #     "if"          : "IF",
+    #     "else"        : "ELSE",
+    #     "while"       : "WHILE",
+    #     "return"      : "RETURN",
+    #     "true"        : "TRUE",
+    #     "false"       : "FALSE",
+    #     "null"        : "NULL",
+    #     "this"        : "THIS"
+    # }
     
-    tag_non_terminal_symbol = {
-        "class", "classVarDec", "subroutineDec", "parameterList", "subroutineBody", "varDec",
-        "statements", "whileStatement", "ifStatement", "returnStatement", "letStatement", "doStatement",
-        "expression", "term", "expressionList"}
+    # tag_non_terminal_symbol = {
+    #    "class", "classVarDec", "subroutineDec", "parameterList", "subroutineBody", "varDec",
+    #    "statements", "whileStatement", "ifStatement", "returnStatement", "letStatement", "doStatement",
+    #    "expression", "term", "expressionList"}
     
     def __init__(self, file, tokenizer):
         # self.fp = open(file, mode='w')
         self.tokenizer    = tokenizer
         self.indent_level = 0
-        self.indent       = ""
         return
 
     def writeFile(self, code):
@@ -54,13 +54,12 @@ class CompilationEngine:
         print(indent + code) # debug
         return
 
-    def writeTerminal(self, expect_type, expect=""):
+    def writeTerminal(self, expect_type, expect_term=""):
         if self.tokenizer.hasMoreTokens():
             self.tokenizer.advance()
         else:
             print("There is No more tokens.")
             return
-
         token       = self.tokenizer.cur_token                                                          
         token_type  = self.tokenizer.tokenType()
         writeMarkup = False
@@ -70,11 +69,11 @@ class CompilationEngine:
         if expect_type == "KEYWORD" and token_type == "KEYWORD":
             keyWord = self.tokenizer.keyWord()
             keyWord = keyWord.lower()    # change lower case letters
-            if keyWord == expect:
+            if not re.fullmatch(expect_term, keyWord) == "None":
                 markup = "<" + tag + "> " + keyWord + " </" + tag + ">"   
         elif expect_type == "SYMBOL" and token_type == "SYMBOL":
             symbol = self.tokenizer.symbol()
-            if symbol == expect:
+            if not re.fullmatch(expect_term, symbol) == "None":
                 markup = "<" + tag + "> " + symbol + " </" + tag + ">" 
         elif expect_type == "INT_CONST" and token_type == "INT_CONST":
             int_const = self.tokenizer.intVal()
@@ -89,7 +88,7 @@ class CompilationEngine:
         if len(markup) > 0:
             self.writeFile(markup)
         else:
-            print("Current token[",  token, "]/type[", token_type, "] doesn't match expect token[", expect, "]/type[", expect_type, "]")
+            print("Error: Current token[",  token, "]/type[", token_type, "] doesn't match expect_term[", expect_term, "]/type[", expect_type, "]")
             
         return
     
@@ -112,66 +111,123 @@ class CompilationEngine:
         return
     
     def compileClass(self):
-        '''
-        'class' className '{' classVarDec* subroutineDec* '}'
-        '''
+        '''  'class' className '{' classVarDec* subroutineDec* '}'  '''
         self.writeNonTerminalTagStart("class")
-        
-        self.writeTerminal("KEYWORD", "class") # 'class'
-        self.writeTerminal("IDENTIFIER")       # className    
-        self.writeTerminal("SYMBOL", "{")      # {
-
-        # classVarDec*
-        self.writeNonTerminalTagStart("classVarDec")
-        self.writeNonTerminal("HogeHoge")        
-        self.writeNonTerminalTagEnd("classVarDec")        
-
-        # subroutineDec*
-        self.writeNonTerminalTagStart("subroutineDec")
-        self.writeNonTerminal("HogeHoge")
-        self.writeNonTerminalTagEnd("subroutineDec")        
-
-        # self.writeTerminal("SYMBOL", "}") # }
+        self.writeTerminal("KEYWORD", "class")
+        self.writeTerminal("IDENTIFIER")   # className
+        self.writeTerminal("SYMBOL", "{")
+        self.compileClassVarDec()
+        self.compileSubroutine()    
+        self.writeTerminal("SYMBOL", "}")
         self.writeNonTerminalTagEnd("class")        
         return 
-
+    
     def compileClassVarDec(self):
+        '''  ('static' | 'field') type varName (',' varName)* ';'  '''
+        self.writeNonTerminalTagStart("classVarDec")
+        self.writeTerminal("KEYWORD", "static | field")
+        self.compileType()
+        self.writeTerminal("IDENTIFIER") # varName
+        
+        # TODO: (',' varName)*
+        
+        self.writeTerminal("SYMBOL", ";")
+        self.writeNonTerminalTagEnd("classVarDec")        
         return 
 
+    def compileType(self):
+        '''  'int' | 'char' | 'boolean' | className  '''
+        self.writeTerminal("KEYWORD", "int | char | boolean")
+        # TODO: className
+        return
+        
     def compileSubroutine(self):
+        '''
+        ('constructor' | 'function' | 'method') ('void' | type) subroutineName 
+        '(' parameterList ')' subroutineBody
+        '''        
+        self.writeNonTerminalTagStart("subroutineDec")
+
+        
+        self.writeNonTerminalTagEnd("subroutineDec")        
         return 
 
     def compileParameterList(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("parameterList")
+        self.writeNonTerminalTagEnd("parameterList")        
         return 
 
     def compileVarDec(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("varDec")
+        self.writeNonTerminalTagEnd("varDec")               
         return 
 
     def compileStatements(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("statements")
+        self.writeNonTerminalTagEnd("statements")         
         return 
 
     def compileDo(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("doStatement")
+        self.writeNonTerminalTagEnd("doStatement")        
         return 
 
     def compileLet(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("letStatement")
+        self.writeNonTerminalTagEnd("letStatement")  
         return 
 
     def compileWhile(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("whileStatement")
+        self.writeNonTerminalTagEnd("whileStatement")                
         return 
 
     def compileReturn(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("returnStatement")
+        self.writeNonTerminalTagEnd("returnStatement")      
         return 
 
     def compileIf(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("ifStatement")
+        self.writeNonTerminalTagEnd("ifStatement")         
         return 
 
     def compileExpression(self):
-        # need look ahead
+        '''
+        '''        
+        self.writeNonTerminalTagStart("expression")
+        # need look ahead        
+        self.writeNonTerminalTagEnd("expression")   
+
         return 
 
     def compileTerm(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("term")
+        self.writeNonTerminalTagEnd("term")                
         return 
-
+    
     def compileExpressionList(self):
+        '''
+        '''        
+        self.writeNonTerminalTagStart("expressionList")
+        self.writeNonTerminalTagEnd("expressionList")        
         return 
     
