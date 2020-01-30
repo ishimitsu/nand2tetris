@@ -43,7 +43,7 @@ class CompilationEngine:
     #    "expression", "term", "expressionList"}
     
     def __init__(self, file, tokenizer):
-        # self.fp = open(file, mode='w')
+        self.fp = open(file, mode='w')
         self.tokenizer      = tokenizer
         self.indent_level   = 0
         self.compile_result = True
@@ -52,10 +52,18 @@ class CompilationEngine:
 
     def writeFile(self, code):
         indent = "  " * self.indent_level        
-        # self.fp.write(indent + code + '\n')
-        print(indent + code) # debug
+        self.fp.write(indent + code + '\n')
+        # print(indent + code) # debug
         return
-
+    
+    def close(self):
+        self.fp.close()
+        if self.tokenizer.hasMoreTokens():        
+            print("Compile failed! There are some tokens aren't compiled yet.")
+            print("rest token :", self.tokenizer.cur_token)
+            self.compile_result = False 
+        return
+    
     def nextToken(self):
         if self.tokenizer.hasMoreTokens():
             self.tokenizer.advance()
@@ -68,6 +76,7 @@ class CompilationEngine:
     def isTerminal(self, expect_type, expect_term=""):
         token_type = self.tokenizer.tokenType()
         ret        = False
+        
         if expect_type == "KEYWORD" and token_type == "KEYWORD":
             keyWord = self.tokenizer.keyWord()
             keyWord = keyWord.lower()    # change lower case letters
@@ -77,16 +86,14 @@ class CompilationEngine:
             symbol = self.tokenizer.symbol()
             if not re.fullmatch(expect_term, symbol) == None:
                 ret = True
-        elif expect_type == "INT_CONST" and token_type == "INT_CONST":
-            ret = True                         
-        elif expect_type == "STRING_CONST" and token_type == "STRING_CONST":
-            ret = True             
-        elif expect_type == "IDENTIFIER" and token_type == "IDENTIFIER":
-            ret = True                         
+        elif (expect_type == "INT_CONST" and token_type == "INT_CONST") or \
+             (expect_type == "STRING_CONST" and token_type == "STRING_CONST") or\
+             (expect_type == "IDENTIFIER" and token_type == "IDENTIFIER") :
+            ret = True
         else:
-            token = self.tokenizer.cur_token                                                          
-            # print("Error: token[", token, "]/type[", token_type, "] doesn't match term[", expect_term, "]/type[", expect_type, "]")
-            self.compile_result = False
+            token = self.tokenizer.cur_token
+            # if not __debug__:
+            #     print("Error: token[", token, "]/type[", token_type, "] doesn't match term[", expect_term, "]/type[", expect_type, "]")
             
         return ret
             
@@ -102,7 +109,7 @@ class CompilationEngine:
             markup = "<" + tag + "> " + symbol + " </" + tag + ">" 
         elif term_type == "INT_CONST":
             int_const = self.tokenizer.intVal()
-            markup = "<" + tag + "> " + int_const + " </" + tag + ">"             
+            markup = "<" + tag + "> " + str(int_const) + " </" + tag + ">"             
         elif term_type == "STRING_CONST":
             str_const = self.tokenizer.stringVal()            
             markup = "<" + tag + "> " + str_const + " </" + tag + ">"                             
@@ -135,10 +142,6 @@ class CompilationEngine:
         self.writeFile(markup)
         return
     
-    def close(self):
-        # self.fp.close()
-        return
-    
     def compileClass(self):
         '''  
         'class' className '{' classVarDec* subroutineDec* '}'  
@@ -167,12 +170,10 @@ class CompilationEngine:
         self.writeTerminal("KEYWORD", "static|field")
         self.compileType()
         self.writeTerminal("IDENTIFIER") # varName
-        
         # (',' varName)* ;
         while self.isTerminal("SYMBOL", ",") == True:
             self.writeTerminal("SYMBOL", ",")
             self.writeTerminal("IDENTIFIER") # varName
-                
         self.writeTerminal("SYMBOL", ";")
         self.writeNonTerminalTagEnd("classVarDec")
         return 
@@ -195,15 +196,15 @@ class CompilationEngine:
         '''        
         self.writeNonTerminalTagStart("subroutineDec")
         self.writeTerminal("KEYWORD", "constructor|function|method")
-
         # ('void' | type)
         if self.isTerminal("KEYWORD", "void"):
             self.writeTerminal("KEYWORD", "void")
         else:
             self.compileType()
-            
         self.writeTerminal("IDENTIFIER") # subroutineName
+        self.writeTerminal("SYMBOL", "\(")        
         self.compileParameterList()
+        self.writeTerminal("SYMBOL", "\)")
         self.compileSubroutineBody() 
         self.writeNonTerminalTagEnd("subroutineDec")        
         return 
@@ -213,28 +214,28 @@ class CompilationEngine:
         ((type varName) (',' type varName)*)?  
         '''        
         self.writeNonTerminalTagStart("parameterList")
-        if self.isTerminal("SYMBOL", "\("):
-            self.nextToken() # ignore "("
-            
-        self.compileType()
-        self.writeTerminal("IDENTIFIER") # varName
-        
-        # (',' type varName)*
-        while self.isTerminal("SYMBOL", ",") == True:
-            self.writeTerminal("SYMBOL", ",")
+
+        if self.isTerminal("KEYWORD", "int|char|boolean") or self.isTerminal("IDENTIFIER"): # isType
             self.compileType()
             self.writeTerminal("IDENTIFIER") # varName
-
-        if self.isTerminal("SYMBOL", "\)"):
-            self.nextToken() # ignore ")"
-
+            # (',' type varName)*
+            while self.isTerminal("SYMBOL", ",") == True:
+                self.writeTerminal("SYMBOL", ",")
+                self.compileType()
+                self.writeTerminal("IDENTIFIER") # varName
+                
         self.writeNonTerminalTagEnd("parameterList")        
         return 
 
     def compileSubroutineBody(self):
         '''  '{' varDec* statements '}'  '''        
         self.writeNonTerminalTagStart("subroutineBody")
-        # TODO        
+        self.writeTerminal("SYMBOL", "{")
+        # varDec*        
+        while self.isTerminal("KEYWORD", "var") == True:
+            self.compileVarDec()
+        self.compileStatements()
+        self.writeTerminal("SYMBOL", "}")        
         self.writeNonTerminalTagEnd("subroutineBody")        
         return 
     
@@ -243,24 +244,40 @@ class CompilationEngine:
         'var' type varName (',' varName)* ';'  
         '''        
         self.writeNonTerminalTagStart("varDec")
-        # TODO        
+        self.writeTerminal("KEYWORD", "var")
+        self.compileType()
+        self.writeTerminal("IDENTIFIER") # varName
+        # (',' varName)* ;
+        while self.isTerminal("SYMBOL", ",") == True:
+            self.writeTerminal("SYMBOL", ",")
+            self.writeTerminal("IDENTIFIER") # varName
+        self.writeTerminal("SYMBOL", ";")
         self.writeNonTerminalTagEnd("varDec")               
         return 
 
     def compileStatements(self):
         '''  statement*  '''        
         self.writeNonTerminalTagStart("statements")
-        # TODO        
+        while self.isTerminal("KEYWORD", "let|if|while|do|return") == True:
+            self.compileStatement()
         self.writeNonTerminalTagEnd("statements")         
         return 
 
     def compileStatement(self):
         '''  
         letStatement | ifStatement | whileStatement | doStatement | returnStatement  
-        '''        
-        self.writeNonTerminalTagStart("statements")
-        # TODO        
-        self.writeNonTerminalTagEnd("statements")         
+        '''
+        if self.isTerminal("KEYWORD", "let") == True:
+            self.compileLet()
+        elif self.isTerminal("KEYWORD", "if") == True:
+            self.compileIf()
+        elif self.isTerminal("KEYWORD", "while") == True:
+            self.compileWhile()
+        elif self.isTerminal("KEYWORD", "do") == True:
+            self.compileDo()
+        elif self.isTerminal("KEYWORD", "return") == True:
+            self.compileReturn()
+            
         return
     
     def compileDo(self):
@@ -268,7 +285,9 @@ class CompilationEngine:
         'do' subroutineCall ';'  
         '''        
         self.writeNonTerminalTagStart("doStatement")
-        # TODO        
+        self.writeTerminal("KEYWORD", "do")
+        self.compileSubroutineCall();
+        self.writeTerminal("SYMBOL", ";")
         self.writeNonTerminalTagEnd("doStatement")        
         return 
 
@@ -277,7 +296,18 @@ class CompilationEngine:
         'let' varName ('[' expression ']')? '=' expression ';'  
         '''        
         self.writeNonTerminalTagStart("letStatement")
-        # TODO        
+        self.writeTerminal("KEYWORD", "let")
+        self.writeTerminal("IDENTIFIER") # varName
+
+        if self.isTerminal("SYMBOL", "\[") == True:
+            self.writeTerminal("SYMBOL", "\[")
+            self.compileExpression()
+            self.writeTerminal("SYMBOL", "\]")
+
+        self.writeTerminal("SYMBOL", "\=")
+        self.compileExpression()            
+        self.writeTerminal("SYMBOL", ";")
+        
         self.writeNonTerminalTagEnd("letStatement")  
         return 
 
@@ -286,7 +316,13 @@ class CompilationEngine:
         'while' '(' expression ')' '{' statements '}'
         '''        
         self.writeNonTerminalTagStart("whileStatement")
-        # TODO        
+        self.writeTerminal("KEYWORD", "while")
+        self.writeTerminal("SYMBOL", "\(")
+        self.compileExpression()
+        self.writeTerminal("SYMBOL", "\)")        
+        self.writeTerminal("SYMBOL", "{")
+        self.compileStatements()
+        self.writeTerminal("SYMBOL", "}")
         self.writeNonTerminalTagEnd("whileStatement")                
         return 
 
@@ -295,7 +331,13 @@ class CompilationEngine:
         'return' expression? ';'
         '''        
         self.writeNonTerminalTagStart("returnStatement")
-        # TODO        
+        self.writeTerminal("KEYWORD", "return")
+
+        # TODO : isExpression() => isTerm()
+        if self.isTerm() == True:
+            self.compileExpression()
+        self.writeTerminal("SYMBOL", ";")        
+
         self.writeNonTerminalTagEnd("returnStatement")      
         return 
 
@@ -305,37 +347,141 @@ class CompilationEngine:
         ('else' '{' statements '}')?
         '''        
         self.writeNonTerminalTagStart("ifStatement")
-        # TODO        
+
+        self.writeTerminal("KEYWORD", "if")
+        self.writeTerminal("SYMBOL", "\(")
+        self.compileExpression()
+        self.writeTerminal("SYMBOL", "\)")
+
+        self.writeTerminal("SYMBOL", "{")
+        self.compileStatements()
+        self.writeTerminal("SYMBOL", "}")          
+
+        # ('else' '{' statements '}')?
+        if self.isTerminal("KEYWORD", "else") == True:
+            self.writeTerminal("KEYWORD", "else")  
+            self.writeTerminal("SYMBOL", "{")
+            self.compileStatements()
+            self.writeTerminal("SYMBOL", "}")          
+
         self.writeNonTerminalTagEnd("ifStatement")         
         return 
 
     def compileExpression(self):
         '''
         term (op term)*  
-        '''        
+        '''
+        # symbol_regexp = re.escape('+|-|*|/|&|\||<|>|=')
+        op = "\+|\-|\*|\/|\&|\||\<|\>|\="
         self.writeNonTerminalTagStart("expression")
-        # need look ahead
-        # TODO        
+        self.compileTerm()
+        while self.isTerminal("SYMBOL", op) == True:
+            self.writeTerminal("SYMBOL", op)
+            self.compileTerm()
         self.writeNonTerminalTagEnd("expression")   
 
         return 
-
+    
     def compileTerm(self):
         '''
         integerConstant | stringConstant | keywordConstant | varName | 
         varName '[' expression ']' | subroutineCall | '(' expression ')' | unaryOp term
         '''        
         self.writeNonTerminalTagStart("term")
-        # TODO                
+
+        if self.isTerminal("INT_CONST") == True:
+            self.writeTerminal("INT_CONST")
+        elif self.isTerminal("STRING_CONST") == True:
+            self.writeTerminal("STRING_CONST")
+        elif self.isTerminal("KEYWORD", "true|false|null|this") == True:            
+            self.writeTerminal("KEYWORD", "true|false|null|this")
+        elif self.isTerminal("SYMBOL", "\(") == True:
+            self.writeTerminal("SYMBOL", "\(")
+            self.compileExpression()
+            self.writeTerminal("SYMBOL", "\)")
+        elif self.isTerminal("SYMBOL", "\-|\+") == True:
+            self.writeTerminal("SYMBOL", "\-|\+")
+            self.compileTerm()
+        elif self.isTerminal("IDENTIFIER") == True:
+            # varName | varName '[' expression ']' | subroutineCall
+            
+            self.writeTerminal("IDENTIFIER") # varName | subroutineName
+            if self.isTerminal("SYMBOL", "\[") == True:
+                # '[' expression ']'                
+                self.writeTerminal("SYMBOL", "\[")
+                self.compileExpression()
+                self.writeTerminal("SYMBOL", "\]")
+            elif self.isTerminal("SYMBOL", "\(") == True:
+                # subroutineCall =>  subroutineName '(' expressionList ')'
+                self.writeTerminal("SYMBOL", "\(")
+                self.compileExpressionList()
+                self.writeTerminal("SYMBOL", "\)")
+            elif self.isTerminal("SYMBOL", "\.") == True:
+                # subroutineCall =>  (className | varName) '.' subroutineName '(' expressionList ')' 
+                self.writeTerminal("SYMBOL", "\.")
+                self.writeTerminal("IDENTIFIER") # subroutineName
+                self.writeTerminal("SYMBOL", "\(")
+                self.compileExpressionList()
+                self.writeTerminal("SYMBOL", "\)")
+        else:
+            print("Invalid Term = [", self.tokenizer.cur_token, "]!")
+                
         self.writeNonTerminalTagEnd("term")                
         return 
+
+    def isTerm(self):
+        '''
+        integerConstant | stringConstant | keywordConstant | 
+        varName | varName '[' expression ']' | subroutineCall | 
+        '(' expression ')' | 
+        unaryOp term
+        '''
+        ret = False
+        if self.isTerminal("INT_CONST") == True or\
+           self.isTerminal("STRING_CONST") == True or\
+           self.isTerminal("KEYWORD", "true|false|null|this") == True or\
+           self.isTerminal("IDENTIFIER") == True or\
+           self.isTerminal("SYMBOL", "\(") == True or\
+           self.isTerminal("SYMBOL", "\-|\+") == True:
+            ret = True
+
+        return ret
+    
+    def compileSubroutineCall(self):
+        '''
+        subroutineName '(' expressionList ')' | 
+        (className | varName) '.' subroutineName '(' expressionList ')'
+        '''
+        self.writeTerminal("IDENTIFIER") # subroutineName | className | varName
+        if self.isTerminal("SYMBOL", "\(") == True:
+            # subroutineName '(' expressionList ')'
+            self.writeTerminal("SYMBOL", "\(")
+            self.compileExpressionList()
+            self.writeTerminal("SYMBOL", "\)")
+        elif self.isTerminal("SYMBOL", "\.") == True:
+            # (className | varName) '.' subroutineName '(' expressionList ')' 
+            self.writeTerminal("SYMBOL", "\.")
+            self.writeTerminal("IDENTIFIER") # subroutineName
+            self.writeTerminal("SYMBOL", "\(")
+            self.compileExpressionList()
+            self.writeTerminal("SYMBOL", "\)")
+            
+        return
     
     def compileExpressionList(self):
         '''
         (expression (',' expression)* )?
         '''        
         self.writeNonTerminalTagStart("expressionList")
-        # TODO                        
+
+        # TODO : isTerm()
+        if self.isTerm() == True:
+            self.compileExpression()
+            
+            while self.isTerminal("SYMBOL", ",") == True:
+                self.writeTerminal("SYMBOL", ",")
+                self.compileExpression()
+        
         self.writeNonTerminalTagEnd("expressionList")        
         return 
     
