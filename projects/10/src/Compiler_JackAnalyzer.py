@@ -14,8 +14,7 @@ class JackAnalyzer:
         in_flist = []
         out_flist = []
 
-        out_dirpath = os.path.split(path)[0] + "/" + out_dirname + '/'
-        print(out_dirpath)
+        out_dirpath = os.path.split(path)[0] + "/../" + out_dirname + '/'
         if os.path.isdir(out_dirpath) == False:
             os.mkdir(out_dirpath)
         
@@ -31,42 +30,6 @@ class JackAnalyzer:
                out_flist.append(out_file)
                
         return in_flist, out_flist
-
-    def keyWord2Compiler(self, keyWord, Tokenizer, Compiler):
-        keyWordType = jt.keyWord()
-
-        # check .jack starts with "class"
-        if Tokenizer.t_idx == 0 and not keyWordType == "CLASS":
-            print("This Jack File is Invalid because it doesn't start with CLASS, so exit Analyzer!")
-            sys.exit()
-        
-        if keyWordType   == "CLASS":
-            Compiler.compileClass()
-        elif keyWordType in ["STATIC", "FIELD"]:
-            Compiler.compileClassVarDec()
-        # elif keyWordType in ["INT", "CHAR", "BOOLEN"]:
-        #     type
-        elif keyWordType in ["METHOD", "FUNCTION", "CUNSTRUCTOR", "VOID"]:
-            Compiler.compileSubroutine()
-            # Compiler.compileParameterlist()
-        elif keyWordType == "VAR":
-            Compiler.compileVarDec()
-        elif keyWordType == "DO":
-            Compiler.compileDo()
-        elif keyWordType == "LET":
-            Compiler.compileLet()            
-        elif keyWordType == "WHILE":
-            Compiler.compileWhile()
-        elif keyWordType == "RETURN":
-            Compiler.compileReturn()
-        elif keyWordType in ["IF", "ELSE"]:
-            Compiler.compileIf()
-        # elif keyWordType in ["TRUE", "FALSE", "NULL", "THIS"]:
-        #     keyWordConstant
-        else:
-            print("Ignored Invalid keyWord token: ", Tokenizer.cur_token)
-        
-        return
     
     def Tokenizer2CompilationEngine(self, jack_flist, xml_flist):
         for i in range(len(jack_flist)):
@@ -76,28 +39,6 @@ class JackAnalyzer:
             xml_file  = xml_flist[i]                        
             ce  = CompilationEngine(xml_file, jt)
             ce.compileClass()
-            
-            # while jt.hasMoreTokens():
-            #     jt.advance()
-            #     token_type = jt.tokenType()
-            #     # print(jt.cur_token, "\t =>\t", token_type, end="\n")  
-            #     if token_type   == "KEYWORD":
-            #         self.keyWord2Compiler(jt, ce)
-            #     elif token_type == "SYMBOL":
-            #         symbol  = jt.symbol()
-            #         # ce.compileExpression
-            #     elif token_type == "INT_CONST":
-            #         intval  = jt.intVal()
-            #         # ce.compileExpression                    
-            #     elif token_type == "STRING_CONST":
-            #         strval  = jt.stringVal()
-            #         # ce.compileExpression
-            #     elif token_type == "IDENTIFIER":
-            #         idt     = jt.identifier()
-            #         # ce.compileTerm
-            #     else :
-            #         print("Ignored Invalid token: ", jt.cur_token)
-
             ce.close()
         return
 

@@ -49,12 +49,12 @@ class JackTokenizer:
         
         if os.path.isfile(file):
             fp = open(file)
-            readlines = fp.readlines()
+            readlines = [s.strip() for s in fp.readlines()]
             skip_endcomment = False
-            for i in range(len(readlines)):
-                line  = readlines[i]
-                words = self.splitLine2Words(line)                
+            for line in readlines:
+                words = self.splitLine2Words(line)
                 skip_endline = False
+                line = fp.readline()
                 
                 for j in range(len(words)):
                     # isComments
@@ -69,6 +69,7 @@ class JackTokenizer:
                         
                     if (not skip_endline) and (not skip_endcomment):
                         self.t_max += self.cvtWords2Token(words[j], self.token_list)
+
         fp.close()
         
         return
@@ -84,21 +85,29 @@ class JackTokenizer:
         line = line.strip() # remove head and tail spaces and '\n'
         for i in range(len(line)):
             if line[i] == '"':
-                # is double_quoted string?                
                 if isDquote == False:
+                    # detected start of dquote
                     dquote_start = i
                     isDquote = True
+
+                    if isWord == True:
+                        word = line[w_start:dquote_start]
+                        words.append(word)
+                        w_start = False
+                        isWord = False
                 else:
+                    # detected end of dquote                    
                     word = line[dquote_start:i+1]
                     words.append(word)
                     dquote_start = 0
-                    isDquote = False                    
+                    isDquote = False
+                    # w_start = i+1
+                    # isWord  = True                    
             elif isDquote == False:
                 # separate by space
                 if line[i] != r' ' and isWord == False:
                     w_start = i
                     isWord  = True
-                    
                 if (line[i] == r' ' or i == len(line)-1) and isWord == True:
                     w_end = i
                     if i == len(line)-1:                    
@@ -107,7 +116,7 @@ class JackTokenizer:
                     words.append(word)
                     w_start = 0
                     isWord = False
-                    
+        # print("line: ", line, " => ", words)
         return words
     
     def cvtWords2Token(self, words, token_list):
@@ -120,7 +129,7 @@ class JackTokenizer:
             if len(separated_w[i]) > 0:
                 token_list.append(separated_w[i])
                 token_cnt += 1
-
+                
         return token_cnt
     
     def hasMoreTokens(self):
