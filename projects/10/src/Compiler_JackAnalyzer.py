@@ -14,19 +14,20 @@ class JackAnalyzer:
         in_flist = []
         out_flist = []
 
-        out_dirpath = os.path.split(path)[0] + "/../" + out_dirname + '/'
+        out_dirpath = os.path.split(path)[0] + "/" + out_dirname + '/'
+        print(out_dirpath)
         if os.path.isdir(out_dirpath) == False:
             os.mkdir(out_dirpath)
         
         if os.path.isfile(path):
             in_file  = path
-            out_file = os.path.split(in_file)[0] + "/../" + out_dirname + '/' + os.path.basename(in_file).split('.', 1)[0] + out_ext
+            out_file = out_dirpath + os.path.basename(in_file).split('.', 1)[0] + out_ext
             in_flist.append(in_file)
             out_flist.append(out_file)              
         elif os.path.isdir(path):
            in_flist = glob.glob(path + "/*" + in_ext)
            for i in range(len(in_flist)):
-               out_file = os.path.split(in_flist[i])[0] + "/../" + out_dirname + '/' + os.path.basename(in_flist[i]).split('.', 1)[0] + out_ext
+               out_file = out_dirpath + os.path.basename(in_flist[i]).split('.', 1)[0] + out_ext
                out_flist.append(out_file)
                
         return in_flist, out_flist
