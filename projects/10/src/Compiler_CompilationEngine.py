@@ -399,8 +399,9 @@ class CompilationEngine:
             self.writeTerminal("SYMBOL", "\(")
             self.compileExpression()
             self.writeTerminal("SYMBOL", "\)")
-        elif self.isTerminal("SYMBOL", "\-|\+") == True:
-            self.writeTerminal("SYMBOL", "\-|\+")
+        elif self.isTerminal("SYMBOL", "\-|\~") == True:
+            # unaryOp term
+            self.writeTerminal("SYMBOL", "\-|\~")
             self.compileTerm()
         elif self.isTerminal("IDENTIFIER") == True:
             # varName | varName '[' expression ']' | subroutineCall
@@ -442,7 +443,7 @@ class CompilationEngine:
            self.isTerminal("KEYWORD", "true|false|null|this") == True or\
            self.isTerminal("IDENTIFIER") == True or\
            self.isTerminal("SYMBOL", "\(") == True or\
-           self.isTerminal("SYMBOL", "\-|\+") == True:
+           self.isTerminal("SYMBOL", "\-|\~") == True:
             ret = True
 
         return ret
