@@ -44,6 +44,7 @@ class CompilationEngine:
     
     def __init__(self, file, tokenizer):
         self.fp = open(file, mode='w')
+        self.fname          = file
         self.tokenizer      = tokenizer
         self.indent_level   = 0
         self.compile_result = True
@@ -59,17 +60,19 @@ class CompilationEngine:
     def close(self):
         self.fp.close()
         if self.tokenizer.hasMoreTokens():        
-            print("Compile failed! There are some tokens aren't compiled yet.")
+            print("[", self.fname, "] Compile failed! There are some tokens aren't compiled yet.")
             print("rest token :", self.tokenizer.cur_token)
-            self.compile_result = False 
+            self.compile_result = False
+        else:
+            print("[", self.fname, "] All tokens Compile finished.")            
         return
     
     def nextToken(self):
         if self.tokenizer.hasMoreTokens():
             self.tokenizer.advance()
             return True
-        else:
-            print("There is No more tokens.")
+        # else:
+        #     print("There is No more tokens.")
             
         return False
 

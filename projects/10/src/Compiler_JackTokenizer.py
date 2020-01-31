@@ -58,7 +58,7 @@ class JackTokenizer:
                 
                 for j in range(len(words)):
                     # isComments
-                    if words[j] == "//":
+                    if not re.search("(\/\/)+", words[j]) == None:
                         skip_endline = True # skip this line
                         continue                        
                     elif words[j] == "/**" or words[j] == "/*":
