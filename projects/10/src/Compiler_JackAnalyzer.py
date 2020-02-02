@@ -14,7 +14,7 @@ class JackAnalyzer:
         in_flist = []
         out_flist = []
 
-        out_dirpath = os.path.split(path)[0] + "/../" + out_dirname + '/'
+        out_dirpath = os.path.split(path)[0] + "/" + out_dirname + '/'
         if os.path.isdir(out_dirpath) == False:
             os.mkdir(out_dirpath)
         

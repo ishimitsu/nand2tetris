@@ -109,6 +109,13 @@ class CompilationEngine:
             markup = "<" + tag + "> " + keyWord.lower() + " </" + tag + ">"   # change lower case letters
         elif term_type == "SYMBOL":
             symbol = self.tokenizer.symbol()
+            # <, >, & convert for XML Markup
+            if symbol == "<":
+                symbol = "&lt;"
+            elif symbol == ">":
+                symbol = "&gt;"
+            elif symbol == "&":
+                symbol = "&amp;"
             markup = "<" + tag + "> " + symbol + " </" + tag + ">" 
         elif term_type == "INT_CONST":
             int_const = self.tokenizer.intVal()
