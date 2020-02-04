@@ -15,7 +15,7 @@ class CompilationEngine:
     }
     
     def __init__(self, file, tokenizer):
-        self.fp = open(file, mode='w')
+        self.fp = open(file, mode='a')
         self.fname          = file
         self.tokenizer      = tokenizer
         self.indent_level   = 0
@@ -30,6 +30,7 @@ class CompilationEngine:
         return
     
     def close(self):
+        self.fp.write('\n')        
         self.fp.close()
         if self.tokenizer.hasMoreTokens():        
             print("[", self.fname, "] Compile failed! There are some tokens aren't compiled yet.")
@@ -43,8 +44,6 @@ class CompilationEngine:
         if self.tokenizer.hasMoreTokens():
             self.tokenizer.advance()
             return True
-        # else:
-        #     print("There is No more tokens.")
             
         return False
 
@@ -65,8 +64,8 @@ class CompilationEngine:
              (expect_type == "STRING_CONST" and token_type == "STRING_CONST") or\
              (expect_type == "IDENTIFIER" and token_type == "IDENTIFIER") :
             ret = True
-        else:
-            token = self.tokenizer.cur_token
+        # else:
+            # token = self.tokenizer.cur_token
             # if not __debug__:
             #     print("Error: token[", token, "]/type[", token_type, "] doesn't match term[", expect_term, "]/type[", expect_type, "]")
             
