@@ -4,6 +4,8 @@ import glob
 import pprint
 import re
 
+from Compiler_SymbolTable     import SymbolTable
+
 class CompilationEngine:
 
     tag_terminal = {
@@ -21,6 +23,7 @@ class CompilationEngine:
         self.indent_level   = 0
         self.compile_result = True
         self.nextToken() # get first token
+
         return
 
     def writeFile(self, code):
@@ -66,8 +69,7 @@ class CompilationEngine:
             ret = True
         # else:
             # token = self.tokenizer.cur_token
-            # if not __debug__:
-            #     print("Error: token[", token, "]/type[", token_type, "] doesn't match term[", expect_term, "]/type[", expect_type, "]")
+            # print("token[", token, "]/type[", token_type, "] doesn't match term[", expect_term, "]/type[", expect_type, "]")
             
         return ret
             
@@ -93,19 +95,63 @@ class CompilationEngine:
             markup = "<" + tag + "> " + str(int_const) + " </" + tag + ">"             
         elif term_type == "STRING_CONST":
             str_const = self.tokenizer.stringVal()            
-            markup = "<" + tag + "> " + str_const + " </" + tag + ">"                             
+            markup = "<" + tag + "> " + str_const + " </" + tag + ">"
         elif term_type == "IDENTIFIER":
             identifier = self.tokenizer.identifier()
-            markup = "<" + tag + "> " + identifier + " </" + tag + ">"
+            symbol = ""
+            kind   = self.symboltable.kindOf(identifier)            
+            if not kind == "none":
+                if kind in ["var", "argument", "static", "field"]:
+                    category = kind
+                else:
+                    category = "class" # TODO: subroutine()
+                
+                DefOrUse =  "used"
+                type = self.symboltable.typeOf(identifier)                               
+                idx  = str(self.symboltable.indexOf(identifier))
+                symbol = " (" + category +  ", " + DefOrUse + ", " + type + ", " + kind + ", " + idx +  ")"
 
+            markup = "<" + tag + "> " + identifier + symbol + " </" + tag + ">"
+                
         return markup
 
     def writeTerminal(self, expect_type, expect_term=""):
-        if self.isTerminal(expect_type, expect_term) == True:
+        if self.isTerminal(expect_type, expect_term):
             markup = self.getTerminalMarkup(expect_type)  
             self.writeFile(markup)
             self.nextToken() # after write, refer next token
         return
+
+    def writeVarDec(self, keyWord, dataType="", kind="none"):
+        token_type = self.tokenizer.tokenType()
+        identifier = self.tokenizer.identifier()
+        
+        if not token_type == "IDENTIFIER":
+            print(identifier, "is NOT IDENTIFER! so ignored.")
+            return
+        
+        category = ""
+        if keyWord in ["var", "argument", "static", "field", "class"]:
+            category = keyWord
+        elif keyWord in ["constructor", "function", "method"]:
+            # from compileSubroutine()
+            category = "subroutine"
+        else:
+            print(identifier, "has Invalid keyWord", keyWord, ", so ignored.")
+            return
+        
+        if not kind in ["var", "argument", "static", "field"]:
+            print(identifier, "has Invalid kind", kind, ", so ignored.")
+            return
+            
+        self.symboltable.define(identifier, dataType, kind)
+        DefOrUse = "defined"        
+        idx    = str(self.symboltable.indexOf(identifier))
+        symbol = " (" + category +  ", " + DefOrUse + ", " + dataType + ", " + kind + ", " + idx +  ")"
+        tag    = self.tag_terminal.get("IDENTIFIER", "")
+        markup = "<" + tag + "> " + identifier + symbol + " </" + tag + ">"
+        self.writeFile(markup)
+        self.nextToken() # after write, refer next token
     
     def writeNonTerminal(self, token):
         self.writeFile(token)        
@@ -127,16 +173,18 @@ class CompilationEngine:
         '''  
         'class' className '{' classVarDec* subroutineDec* '}'  
         '''
+        self.symboltable = SymbolTable() # create SymbolTable for this class
+        
         self.writeNonTerminalTagStart("class")
         self.writeTerminal("KEYWORD", "class")
         self.writeTerminal("IDENTIFIER")   # className
         self.writeTerminal("SYMBOL", "{")
 
         # classVarDec*
-        while self.isTerminal("KEYWORD", "static|field") == True:
+        while self.isTerminal("KEYWORD", "static|field"):
             self.compileClassVarDec()
-        # subroutineDec*        
-        while self.isTerminal("KEYWORD", "constructor|function|method") == True:     
+        # subroutineDec*
+        while self.isTerminal("KEYWORD", "constructor|function|method"):     
             self.compileSubroutine()  
         
         self.writeTerminal("SYMBOL", "}")
@@ -147,14 +195,18 @@ class CompilationEngine:
         '''  
         ('static' | 'field') type varName (',' varName)* ';'  
         '''
+        keyWord = kind = ""
+        if self.isTerminal("KEYWORD", "static|field"):        
+            keyWord = kind = self.tokenizer.keyWord().lower()
+        
         self.writeNonTerminalTagStart("classVarDec")
         self.writeTerminal("KEYWORD", "static|field")
-        self.compileType()
-        self.writeTerminal("IDENTIFIER") # varName
+        type = self.compileType()
+        self.writeVarDec(keyWord, type, kind)  # varName
         # (',' varName)* ;
-        while self.isTerminal("SYMBOL", ",") == True:
+        while self.isTerminal("SYMBOL", ","):
             self.writeTerminal("SYMBOL", ",")
-            self.writeTerminal("IDENTIFIER") # varName
+            self.writeVarDec(keyWord, type, kind)  # varName            
         self.writeTerminal("SYMBOL", ";")
         self.writeNonTerminalTagEnd("classVarDec")
         return 
@@ -163,18 +215,26 @@ class CompilationEngine:
         '''  
         'int' | 'char' | 'boolean' | className  
         '''
+        ret = ""
         if self.isTerminal("KEYWORD", "int|char|boolean"):
+            dataType = self.tokenizer.keyWord().lower()
             self.writeTerminal("KEYWORD", "int|char|boolean")
+            self.idtDataType = self.tokenizer.keyWord().lower()
+            ret = dataType
         elif self.isTerminal("IDENTIFIER"):
+            className = self.tokenizer.identifier()
             self.writeTerminal("IDENTIFIER") # className
+            ret = className
 
-        return
+        return ret
         
     def compileSubroutine(self):
         '''
         ('constructor' | 'function' | 'method') ('void' | type) subroutineName 
         '(' parameterList ')' subroutineBody
-        '''        
+        '''
+        self.symboltable.startSubroutine()
+        
         self.writeNonTerminalTagStart("subroutineDec")
         self.writeTerminal("KEYWORD", "constructor|function|method")
         # ('void' | type)
@@ -193,17 +253,18 @@ class CompilationEngine:
     def compileParameterList(self):
         '''  
         ((type varName) (',' type varName)*)?  
-        '''        
+        '''
         self.writeNonTerminalTagStart("parameterList")
 
         if self.isTerminal("KEYWORD", "int|char|boolean") or self.isTerminal("IDENTIFIER"): # isType
-            self.compileType()
-            self.writeTerminal("IDENTIFIER") # varName
+            type = self.compileType()            
+            keyWord = kind = "argument"
+            self.writeVarDec(keyWord, type, kind)  # varName            
             # (',' type varName)*
-            while self.isTerminal("SYMBOL", ",") == True:
+            while self.isTerminal("SYMBOL", ","):
                 self.writeTerminal("SYMBOL", ",")
-                self.compileType()
-                self.writeTerminal("IDENTIFIER") # varName
+                type = self.compileType()
+                self.writeVarDec(keyWord, type, kind)  # varName                            
                 
         self.writeNonTerminalTagEnd("parameterList")        
         return 
@@ -213,7 +274,7 @@ class CompilationEngine:
         self.writeNonTerminalTagStart("subroutineBody")
         self.writeTerminal("SYMBOL", "{")
         # varDec*        
-        while self.isTerminal("KEYWORD", "var") == True:
+        while self.isTerminal("KEYWORD", "var"):
             self.compileVarDec()
         self.compileStatements()
         self.writeTerminal("SYMBOL", "}")        
@@ -223,13 +284,14 @@ class CompilationEngine:
     def compileVarDec(self):
         '''  
         'var' type varName (',' varName)* ';'  
-        '''        
+        '''
+        keyWord = kind = "var"
         self.writeNonTerminalTagStart("varDec")
-        self.writeTerminal("KEYWORD", "var")
-        self.compileType()
-        self.writeTerminal("IDENTIFIER") # varName
+        self.writeTerminal("KEYWORD", keyWord)
+        type = self.compileType()
+        self.writeVarDec(keyWord, type, kind)  # varName
         # (',' varName)* ;
-        while self.isTerminal("SYMBOL", ",") == True:
+        while self.isTerminal("SYMBOL", ","):
             self.writeTerminal("SYMBOL", ",")
             self.writeTerminal("IDENTIFIER") # varName
         self.writeTerminal("SYMBOL", ";")
@@ -239,7 +301,7 @@ class CompilationEngine:
     def compileStatements(self):
         '''  statement*  '''        
         self.writeNonTerminalTagStart("statements")
-        while self.isTerminal("KEYWORD", "let|if|while|do|return") == True:
+        while self.isTerminal("KEYWORD", "let|if|while|do|return"):
             self.compileStatement()
         self.writeNonTerminalTagEnd("statements")         
         return 
@@ -248,15 +310,15 @@ class CompilationEngine:
         '''  
         letStatement | ifStatement | whileStatement | doStatement | returnStatement  
         '''
-        if self.isTerminal("KEYWORD", "let") == True:
+        if self.isTerminal("KEYWORD", "let"):
             self.compileLet()
-        elif self.isTerminal("KEYWORD", "if") == True:
+        elif self.isTerminal("KEYWORD", "if"):
             self.compileIf()
-        elif self.isTerminal("KEYWORD", "while") == True:
+        elif self.isTerminal("KEYWORD", "while"):
             self.compileWhile()
-        elif self.isTerminal("KEYWORD", "do") == True:
+        elif self.isTerminal("KEYWORD", "do"):
             self.compileDo()
-        elif self.isTerminal("KEYWORD", "return") == True:
+        elif self.isTerminal("KEYWORD", "return"):
             self.compileReturn()
             
         return
@@ -280,7 +342,7 @@ class CompilationEngine:
         self.writeTerminal("KEYWORD", "let")
         self.writeTerminal("IDENTIFIER") # varName
 
-        if self.isTerminal("SYMBOL", "\[") == True:
+        if self.isTerminal("SYMBOL", "\["):
             self.writeTerminal("SYMBOL", "\[")
             self.compileExpression()
             self.writeTerminal("SYMBOL", "\]")
@@ -315,7 +377,7 @@ class CompilationEngine:
         self.writeTerminal("KEYWORD", "return")
 
         # TODO : isExpression() => isTerm()
-        if self.isTerm() == True:
+        if self.isTerm():
             self.compileExpression()
         self.writeTerminal("SYMBOL", ";")        
 
@@ -339,7 +401,7 @@ class CompilationEngine:
         self.writeTerminal("SYMBOL", "}")          
 
         # ('else' '{' statements '}')?
-        if self.isTerminal("KEYWORD", "else") == True:
+        if self.isTerminal("KEYWORD", "else"):
             self.writeTerminal("KEYWORD", "else")  
             self.writeTerminal("SYMBOL", "{")
             self.compileStatements()
@@ -356,7 +418,7 @@ class CompilationEngine:
         op = "\+|\-|\*|\/|\&|\||\<|\>|\="
         self.writeNonTerminalTagStart("expression")
         self.compileTerm()
-        while self.isTerminal("SYMBOL", op) == True:
+        while self.isTerminal("SYMBOL", op):
             self.writeTerminal("SYMBOL", op)
             self.compileTerm()
         self.writeNonTerminalTagEnd("expression")   
@@ -370,35 +432,35 @@ class CompilationEngine:
         '''        
         self.writeNonTerminalTagStart("term")
 
-        if self.isTerminal("INT_CONST") == True:
+        if self.isTerminal("INT_CONST"):
             self.writeTerminal("INT_CONST")
-        elif self.isTerminal("STRING_CONST") == True:
+        elif self.isTerminal("STRING_CONST"):
             self.writeTerminal("STRING_CONST")
-        elif self.isTerminal("KEYWORD", "true|false|null|this") == True:            
+        elif self.isTerminal("KEYWORD", "true|false|null|this"):            
             self.writeTerminal("KEYWORD", "true|false|null|this")
-        elif self.isTerminal("SYMBOL", "\(") == True:
+        elif self.isTerminal("SYMBOL", "\("):
             self.writeTerminal("SYMBOL", "\(")
             self.compileExpression()
             self.writeTerminal("SYMBOL", "\)")
-        elif self.isTerminal("SYMBOL", "\-|\~") == True:
+        elif self.isTerminal("SYMBOL", "\-|\~"):
             # unaryOp term
             self.writeTerminal("SYMBOL", "\-|\~")
             self.compileTerm()
-        elif self.isTerminal("IDENTIFIER") == True:
+        elif self.isTerminal("IDENTIFIER"):
             # varName | varName '[' expression ']' | subroutineCall
             
             self.writeTerminal("IDENTIFIER") # varName | subroutineName
-            if self.isTerminal("SYMBOL", "\[") == True:
+            if self.isTerminal("SYMBOL", "\["):
                 # '[' expression ']'                
                 self.writeTerminal("SYMBOL", "\[")
                 self.compileExpression()
                 self.writeTerminal("SYMBOL", "\]")
-            elif self.isTerminal("SYMBOL", "\(") == True:
+            elif self.isTerminal("SYMBOL", "\("):
                 # subroutineCall =>  subroutineName '(' expressionList ')'
                 self.writeTerminal("SYMBOL", "\(")
                 self.compileExpressionList()
                 self.writeTerminal("SYMBOL", "\)")
-            elif self.isTerminal("SYMBOL", "\.") == True:
+            elif self.isTerminal("SYMBOL", "\."):
                 # subroutineCall =>  (className | varName) '.' subroutineName '(' expressionList ')' 
                 self.writeTerminal("SYMBOL", "\.")
                 self.writeTerminal("IDENTIFIER") # subroutineName
@@ -424,7 +486,7 @@ class CompilationEngine:
            self.isTerminal("KEYWORD", "true|false|null|this") == True or\
            self.isTerminal("IDENTIFIER") == True or\
            self.isTerminal("SYMBOL", "\(") == True or\
-           self.isTerminal("SYMBOL", "\-|\~") == True:
+           self.isTerminal("SYMBOL", "\-|\~"):
             ret = True
 
         return ret
@@ -435,12 +497,12 @@ class CompilationEngine:
         (className | varName) '.' subroutineName '(' expressionList ')'
         '''
         self.writeTerminal("IDENTIFIER") # subroutineName | className | varName
-        if self.isTerminal("SYMBOL", "\(") == True:
+        if self.isTerminal("SYMBOL", "\("):
             # subroutineName '(' expressionList ')'
             self.writeTerminal("SYMBOL", "\(")
             self.compileExpressionList()
             self.writeTerminal("SYMBOL", "\)")
-        elif self.isTerminal("SYMBOL", "\.") == True:
+        elif self.isTerminal("SYMBOL", "\."):
             # (className | varName) '.' subroutineName '(' expressionList ')' 
             self.writeTerminal("SYMBOL", "\.")
             self.writeTerminal("IDENTIFIER") # subroutineName
@@ -457,10 +519,10 @@ class CompilationEngine:
         self.writeNonTerminalTagStart("expressionList")
 
         # TODO : isTerm()
-        if self.isTerm() == True:
+        if self.isTerm():
             self.compileExpression()
             
-            while self.isTerminal("SYMBOL", ",") == True:
+            while self.isTerminal("SYMBOL", ","):
                 self.writeTerminal("SYMBOL", ",")
                 self.compileExpression()
         

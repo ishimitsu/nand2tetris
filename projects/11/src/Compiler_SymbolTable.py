@@ -3,28 +3,26 @@ import sys
 import pprint
 
 class SymbolTable:
-
-    # type = {
-    #     "var", "argument", "static", "field", "class", "subroutine"
-    # }
+    # type = {"var", "argument", "static", "field", "class", "subroutine", "none"}
     
     def __init__(self):
         self.SymbolTable = []
+        # each subroutine has var, argument 
         self.var_idx        = 0
         self.argument_idx   = 0
+        # each class has static, field
         self.static_idx     = 0
         self.field_idx      = 0
-        self.class_idx      = 0
-        self.subroutine_idx = 0        
+        # self.class_idx      = 0
+        # self.subroutine_idx = 0        
         return
     
     def startSubroutine(self):
         self.SymbolTable.clear()
         self.var_idx        = 0
         self.argument_idx   = 0
-        self.static_idx     = 0
-        self.field_idx      = 0
-        
+        # self.static_idx     = 0
+        # self.field_idx      = 0
         return 
 
     def define(self, name , dtype, kind):
@@ -43,7 +41,7 @@ class SymbolTable:
             kind_idx = self.var_idx
             self.var_idx+=1
         else:
-            print(name , " is invalid kind", kind, "! so ignored.")
+            # print(name , " is invalid kind", kind, "! so ignored.")
             return
         
         new = [name, dtype, kind, kind_idx]
@@ -67,33 +65,40 @@ class SymbolTable:
 
         return kind_idx
 
+    def isdefined(self, name):
+        idx = -1
+        for i in range(len(self.SymbolTable)):
+            symbol      = self.SymbolTable[i]
+            symbol_name = symbol[0]
+            if name == symbol_name:
+                idx = i
+                
+        return idx
+    
     def kindOf(self, name):
         kind = "none"
-        for i in range(len(self.SymbolTable)):
-            defined = self.SymbolTable[i]
-            defined_name = defined[0]
-            if name == defined_name:
-                kind = defined[2]
+        symbol_idx = self.isdefined(name)
+        if symbol_idx >= 0:
+            symbol = self.SymbolTable[symbol_idx]
+            kind   = symbol[2]
         
         return kind
 
     def typeOf(self, name):
         dtype = ""
-        for i in range(len(self.SymbolTable)):
-            defined = self.SymbolTable[i]
-            defined_name = defined[0]
-            if name == defined_name:
-                dtype = defined[1]
+        symbol_idx = self.isdefined(name)
+        if symbol_idx >= 0:
+            symbol = self.SymbolTable[symbol_idx]
+            dtype  = symbol[1]
                 
         return dtype
 
     def indexOf(self, name):
         index = 0
-        for i in range(len(self.SymbolTable)):
-            defined = self.SymbolTable[i]
-            defined_name = defined[0]
-            if name == defined_name:
-                index = defined[3]
+        symbol_idx = self.isdefined(name)        
+        if symbol_idx >= 0:
+            symbol = self.SymbolTable[symbol_idx]
+            index  = symbol[3]
                 
         return index
     

@@ -21,7 +21,11 @@ class JackAnalyzer:
         elif os.path.isdir(path):
            in_flist = glob.glob(path + "/*" + in_ext)
            out_file = path + '/' + os.path.basename(path) + out_ext
-               
+
+        print(out_file)
+        if os.path.exists(out_file):
+            os.remove(out_file)
+           
         return in_flist, out_file
     
     def Tokenizer2CompilationEngine(self, jack_flist, vm_file):
