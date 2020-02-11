@@ -5,6 +5,7 @@ import pprint
 
 from Compiler_JackTokenizer     import JackTokenizer
 from Compiler_CompilationEngine import CompilationEngine
+from Compiler_VMWriter          import VMWriter
 
 class JackAnalyzer:
     def __init__(self):
@@ -29,13 +30,16 @@ class JackAnalyzer:
         return in_flist, out_file
     
     def Tokenizer2CompilationEngine(self, jack_flist, vm_file):
+        vmwriter = VMWriter(vm_file)
+        
         for i in range(len(jack_flist)):
             jack_file = jack_flist[i]
-            jt  = JackTokenizer(jack_file)
-            
-            ce  = CompilationEngine(vm_file, jt)
-            ce.compileClass()
-            ce.close()
+            tokenizer = JackTokenizer(jack_file)
+            compiler  = CompilationEngine(tokenizer, vmwriter)
+            compiler.compileClass()
+            compiler.close()
+
+        vmwriter.close()
         return
 
     
