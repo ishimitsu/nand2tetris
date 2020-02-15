@@ -5,7 +5,7 @@ import pprint
 import re  # for re.split
 
 class VMWriter:
-    SegmentList = {"argument", "local", "constant", "this", "that", "pointer", "temp"}
+    SegmentList = {"argument", "local", "constant", "static", "this", "that", "pointer", "temp"}
     Arithmetic = {"add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not"}
     
     def __init__(self, vm_file):
