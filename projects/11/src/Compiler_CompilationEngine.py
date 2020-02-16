@@ -135,7 +135,7 @@ class CompilationEngine:
         if kind == "static":
             segment = "static"
         elif kind == "field":
-            segment = "this" # TODO
+            segment = "this" # TODO: refer object of myself
         elif kind == "argument":
             segment = "argument"
         elif kind == "var":
@@ -145,7 +145,17 @@ class CompilationEngine:
     
     def pushIdentifier(self, varName):
         segment, index = self.getSegment(varName)
-        self.vmwriter.writePush(segment, index)
+        
+        if segment == "this":
+            self.vmwriter.writePush("constant", index)
+            self.vmwriter.writePush("this", 0)            
+            self.vmwriter.writeArithmetic("add")
+            self.vmwriter.writePop("pointer", 0) # refer *(this + index)
+        # elif segment == "static":
+        #     # TODO
+        else:
+            self.vmwriter.writePush(segment, index)
+            
         return
 
     def popIdentifier(self, varName):
@@ -212,10 +222,8 @@ class CompilationEngine:
         self.subroutineType = self.analysisTerminal("KEYWORD", "constructor|function|method")
         # ('void' | type)
         if self.isTerminal("KEYWORD", "void"):
-            # TODO: Return 0            
             self.analysisTerminal("KEYWORD", "void")
         else:
-            # TODO: Return Val                        
             self.compileType()
         self.subroutineName = self.analysisTerminal("IDENTIFIER")
         self.analysisTerminal("SYMBOL", "\(")
@@ -331,32 +339,40 @@ class CompilationEngine:
         self.compileSubroutineCall();
         self.analysisTerminal("SYMBOL", ";")
 
-        self.vmwriter.writePop("temp", 0) # pop compieExpression() val from stack, but doesn't use.
+        self.vmwriter.writePop("temp", 0) # pop compieExpression() val from stack
         return 
 
     def compileLet(self):
         '''  
         'let' varName ('[' expression ']')? '=' expression ';'  
-        '''        
+        '''
+        isArrayAccess = False
         self.analysisTerminal("KEYWORD", "let")
         varName = self.analysisTerminal("IDENTIFIER")
-
         if self.isTerminal("SYMBOL", "\["):
-            # TODO: varName is Array[size]
+            isArrayAccess = True
             self.analysisTerminal("SYMBOL", "\[")
             self.compileExpression()
             self.analysisTerminal("SYMBOL", "\]")
+            self.pushIdentifier(varName)
+            self.vmwriter.writeArithmetic("add")
+            self.vmwriter.writePop("pointer", 1) # set pointer to *(varName + expression)
 
         self.analysisTerminal("SYMBOL", "\=")
         self.compileExpression()
         self.analysisTerminal("SYMBOL", ";")
-        self.popIdentifier(varName) # pop compileExpression() val from stack to segment of varName
+
+        if isArrayAccess:
+            self.vmwriter.writePop("that", 0) # pop expression to *(varName + expression)
+        else:
+            self.popIdentifier(varName) # pop result to segment of varName
         
         return 
 
     def compileWhile(self):
         '''  
         'while' '(' expression ')' '{' statements '}'
+        Notice: if-goto in while should refers result of ~(conditional), please check P260
         '''
         label_loop, label_end = self.getVMLabelWhile()
         conditional = True
@@ -365,6 +381,7 @@ class CompilationEngine:
         self.analysisTerminal("SYMBOL", "\(")
         self.compileExpression(conditional)
         self.analysisTerminal("SYMBOL", "\)")
+        self.vmwriter.writeArithmetic("not") # if-goto refers result of ~(conditional)        
         self.vmwriter.writeIf(label_end)
         
         self.analysisTerminal("SYMBOL", "{")
@@ -379,6 +396,7 @@ class CompilationEngine:
         '''
         'if' '(' expression ')' '{' statements '}'
         ('else' '{' statements '}')?
+        Notice: if-goto in if should refers result of ~(conditional), please check P260
         '''
         label_else, label_end = self.getVMLabelIf()
         conditional = True
@@ -387,6 +405,7 @@ class CompilationEngine:
         self.compileExpression(conditional)                
         self.analysisTerminal("SYMBOL", "\)")
 
+        self.vmwriter.writeArithmetic("not") # if-goto refers result of ~(conditional)        
         self.vmwriter.writeIf(label_else)          
         self.analysisTerminal("SYMBOL", "{")
         self.compileStatements()
@@ -453,17 +472,12 @@ class CompilationEngine:
                 self.vmwriter.writeArithmetic("eq")                  
 
         if conditional:
-            '''
-            This expression is conditional, called from while/if.
-            Caution: if-goto in while/if should refers result of ~(conditional), please check P260
-            '''
+            # This expression is conditional
             if op == None:
                 # if there is no lt/gt/eq, it means "= True" omitted.
                 self.vmwriter.writePush("constant", 1)
                 self.vmwriter.writeArithmetic("neg")
                 self.vmwriter.writeArithmetic("eq")                              
-
-            self.vmwriter.writeArithmetic("not")
                 
         return
     
@@ -475,11 +489,16 @@ class CompilationEngine:
         if self.isTerminal("INT_CONST"):
             intVal = self.analysisTerminal("INT_CONST")
             self.vmwriter.writePush("constant", intVal)
-        elif self.isTerminal("STRING_CONST"):
+        elif self.isTerminal("STRING_CONST"): 
             strVal = self.analysisTerminal("STRING_CONST")
-            # TODO:writeVMcode
-            # Use OS-constructor, String.new(length)
-            # x="cc...c" => String.appendChar(nextChar)
+            strLen = len(strVal)
+            self.vmwriter.writePush("constant", strLen)         
+            self.vmwriter.writeCall("String.new", 1)
+            for i in range(strLen):
+                c = ord(strVal[i])
+                self.vmwriter.writePush("constant", c)
+                self.vmwriter.writeCall("String.appendChar", 2)
+
         elif self.isTerminal("KEYWORD", "true|false|null|this"):            
             fixVal = self.analysisTerminal("KEYWORD", "true|false|null|this")
             if fixVal == "true":
@@ -516,9 +535,12 @@ class CompilationEngine:
                 self.analysisTerminal("SYMBOL", "\[")
                 self.compileExpression()
                 self.analysisTerminal("SYMBOL", "\]")
-                # TODO:writeVMcode, memory-alloc can use OS-func Memory.alloc(size)
-                # To access array value, "that" segment set head of array-addr,
-                # and access it with "pointer 1" and "that 0"
+                
+                self.pushIdentifier(varName)                
+                self.vmwriter.writeArithmetic("add")
+                self.vmwriter.writePop("pointer", 1) # set pointer to *(varName + expression)
+                self.vmwriter.writePush("that", 0)   # push the value of *(varName + expression)
+                
             elif self.isTerminal("SYMBOL", "\(") or self.isTerminal("SYMBOL", "\."):
                 # subroutineCall
                 self.compileSubroutineCall(tmpName)
@@ -582,8 +604,6 @@ class CompilationEngine:
         #         self.vmwriter.writePush("argument", args)
         
         self.vmwriter.writeCall(subroutineName, numArgs)
-        # TODO: if subroutine is void, need to pop ret-val=0 
-        # self.vmwriter.writePop("temp", 0) # TODO: Is it OK to pop retVal to temp segment ?
         
         return
     
