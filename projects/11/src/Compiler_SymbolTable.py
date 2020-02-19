@@ -18,7 +18,7 @@ class SymbolTable:
         return
     
     def startSubroutine(self):
-        self.SymbolTable.clear()
+        # self.SymbolTable.clear()
         self.var_idx        = 0
         self.argument_idx   = 0
         # self.static_idx     = 0
@@ -60,7 +60,6 @@ class SymbolTable:
         elif kind == "var":
             kind_idx = self.var_idx
         else:
-            print(kind , " is invalid kind!")
             return 0
 
         return kind_idx

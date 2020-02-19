@@ -9,19 +9,15 @@ from Compiler_SymbolTable     import SymbolTable
 class CompilationEngine:
 
     def __init__(self, tokenizer, vmwriter):
-        # self.fp = open(file, mode='a')
         self.vmwriter       = vmwriter
         self.tokenizer      = tokenizer
-        self.indent_level   = 0
-        self.className = self.subroutineName = self.subroutineType = None  
+        self.className = self.cur_subroutineName = self.cur_subroutineType = None
         self.label_idx_while = self.label_idx_if = 0
         
         self.nextToken() # get first token
         return
 
     def close(self):
-        # self.fp.write('\n')        
-        # self.fp.close()
         if self.tokenizer.hasMoreTokens():        
             print("[", self.vmwriter.fname, "] Compile failed! There are some tokens aren't compiled yet.")
             print("rest token :", self.tokenizer.cur_token)
@@ -81,85 +77,55 @@ class CompilationEngine:
             raise Exception(token, 'are NOT same as expect', expect_token, expect_type)
             
         return ret
-    
-    def getVMfunctionName(self):
-        '''
-        xxx() subroutine of  Yyy class => VM functionName is "Yyy.xxx"
-        '''
-        return self.className + "." + self.subroutineName
 
     def getVMLabelWhile(self):
         label_idx  = str(self.label_idx_while)
-        label_loop = self.className + "." + self.subroutineName + ".WHILE_LOOP_" + label_idx
-        label_end  = self.className + "." + self.subroutineName + ".WHILE_END_"  + label_idx
+        label_loop = self.className + "." + self.cur_subroutineName + ".WHILE_LOOP_" + label_idx
+        label_end  = self.className + "." + self.cur_subroutineName + ".WHILE_END_"  + label_idx
         self.label_idx_while += 1
         return label_loop, label_end
     
     def getVMLabelIf(self):
         label_idx  = str(self.label_idx_if)        
-        label_else = self.className + "." + self.subroutineName + ".IF_ELSE_" + label_idx
-        label_end  = self.className + "." + self.subroutineName + ".IF_END_"  + label_idx
+        label_else = self.className + "." + self.cur_subroutineName + ".IF_ELSE_" + label_idx
+        label_end  = self.className + "." + self.cur_subroutineName + ".IF_END_"  + label_idx
         self.label_idx_if += 1
         return label_else, label_end
-    
-    def regIdentifier2SymbolTable(self, identifier, keyWord, dataType=None, kind="none"):
-        category = None
-        if keyWord in ["var", "argument", "static", "field", "class"]:
-            category = keyWord
-        elif keyWord in ["constructor", "function", "method"]:
-            # from compileSubroutine()
-            category = "subroutine"
+
+    def append2SymbolTable(self, identifier, keyWord, dataType=None, kind="none"):
+        if kind in ["var", "argument", "static", "field"]:
+            self.symboltable.define(identifier, dataType, kind)
         else:
-            print(identifier, "has Invalid keyWord", keyWord, ", so ignored.")
-            return
-        
-        if not kind in ["var", "argument", "static", "field"]:
             print(identifier, "has Invalid kind", kind, ", so ignored.")
             return
-            
-        self.symboltable.define(identifier, dataType, kind)
-        # DefOrUse = "defined"        
-        # idx    = str(self.symboltable.indexOf(identifier))
-        # symbol = " (" + category +  ", " + DefOrUse + ", " + dataType + ", " + kind + ", " + idx +  ")"
-        # tag    = self.tag_terminal.get("IDENTIFIER", "")
-        # markup = "<" + tag + "> " + identifier + symbol + " </" + tag + ">"
-        
-        return
 
+        return
+    
     def getSegment(self, varName):
         kind     = self.symboltable.kindOf(varName)
         index    = self.symboltable.indexOf(varName)
         dataType = self.symboltable.typeOf(varName)        
         segment  = None
-
-        if kind == "static":
-            segment = "static"
-        elif kind == "field":
-            segment = "this" # TODO: refer object of myself
-        elif kind == "argument":
+        if kind == "argument":
             segment = "argument"
         elif kind == "var":
             segment = "local"
-        
+        elif kind == "static":
+            segment = "static"
+        elif kind == "field":
+            segment = "this"
+        else:
+            print(varName)            
+            
         return segment, index
     
     def pushIdentifier(self, varName):
         segment, index = self.getSegment(varName)
-        
-        if segment == "this":
-            self.vmwriter.writePush("constant", index)
-            self.vmwriter.writePush("this", 0)            
-            self.vmwriter.writeArithmetic("add")
-            self.vmwriter.writePop("pointer", 0) # refer *(this + index)
-        # elif segment == "static":
-        #     # TODO
-        else:
-            self.vmwriter.writePush(segment, index)
-            
+        self.vmwriter.writePush(segment, index)
         return
 
     def popIdentifier(self, varName):
-        segment, index = self.getSegment(varName)        
+        segment, index = self.getSegment(varName)
         self.vmwriter.writePop(segment, index)
         return
     
@@ -167,7 +133,7 @@ class CompilationEngine:
         '''  
         'class' className '{' classVarDec* subroutineDec* '}'  
         '''
-        self.symboltable = SymbolTable() # create SymbolTable for this class
+        self.symboltable = SymbolTable()
         
         self.analysisTerminal("KEYWORD", "class")
         self.className = self.analysisTerminal("IDENTIFIER")  
@@ -189,12 +155,12 @@ class CompilationEngine:
         keyWord  = kind = self.analysisTerminal("KEYWORD", "static|field")
         dataType = self.compileType()
         varName  = self.analysisTerminal("IDENTIFIER")        
-        self.regIdentifier2SymbolTable(varName, keyWord, dataType, kind)  # varName
+        self.append2SymbolTable(varName, keyWord, dataType, kind)  # varName
         # (',' varName)* ;
         while self.isTerminal("SYMBOL", ","):
             self.analysisTerminal("SYMBOL", ",")
             varName = self.analysisTerminal("IDENTIFIER")
-            self.regIdentifier2SymbolTable(varName, keyWord, dataType, kind)
+            self.append2SymbolTable(varName, keyWord, dataType, kind)
         self.analysisTerminal("SYMBOL", ";")
 
         # TODO: static values => push static segment        
@@ -217,19 +183,21 @@ class CompilationEngine:
         ('constructor' | 'function' | 'method') ('void' | type) subroutineName 
         '(' parameterList ')' subroutineBody
         '''
-        self.symboltable.startSubroutine()        
+        self.symboltable.startSubroutine()
         
-        self.subroutineType = self.analysisTerminal("KEYWORD", "constructor|function|method")
+        self.cur_subroutineType = self.analysisTerminal("KEYWORD", "constructor|function|method")
+        DataType = None
         # ('void' | type)
         if self.isTerminal("KEYWORD", "void"):
-            self.analysisTerminal("KEYWORD", "void")
+            Datatype = self.analysisTerminal("KEYWORD", "void")
         else:
-            self.compileType()
-        self.subroutineName = self.analysisTerminal("IDENTIFIER")
+            Datatype = self.compileType()
+        self.cur_subroutineName = self.analysisTerminal("IDENTIFIER")
+        
         self.analysisTerminal("SYMBOL", "\(")
         self.compileParameterList()
-        self.analysisTerminal("SYMBOL", "\)")
-                
+        self.analysisTerminal("SYMBOL", "\)")        
+
         self.compileSubroutineBody()
         
         return 
@@ -238,22 +206,22 @@ class CompilationEngine:
         '''  
         ((type varName) (',' type varName)*)?  
         '''
-        if self.subroutineType == "method":
-            # method => VM function has numArgs+1, Arg0 refers "this".
-            self.regIdentifier2SymbolTable("this", "argument", self.className, kind)
+        if self.cur_subroutineType == "method":
+            # method => VM function has numArgs+1, arg0=this refers "this" segment base addr(like self of python).
+            self.append2SymbolTable("this", "argument", self.className, "argument")
             
         if self.isTerminal("KEYWORD", "int|char|boolean") or self.isTerminal("IDENTIFIER"):
             keyWord = kind = "argument"
             
             dataType = self.compileType()            
             varName = self.analysisTerminal("IDENTIFIER")            
-            self.regIdentifier2SymbolTable(varName, keyWord, dataType, kind)
+            self.append2SymbolTable(varName, keyWord, dataType, kind)
             # (',' type varName)*
             while self.isTerminal("SYMBOL", ","):
                 self.analysisTerminal("SYMBOL", ",")
                 dataType = self.compileType()
                 varName = self.analysisTerminal("IDENTIFIER")            
-                self.regIdentifier2SymbolTable(varName, keyWord, dataType, kind)
+                self.append2SymbolTable(varName, keyWord, dataType, kind)
 
         return
 
@@ -266,24 +234,26 @@ class CompilationEngine:
             self.compileVarDec()
             numLocals += 1
 
-        VMfunctionName = self.getVMfunctionName()
+        # "xxx()" subroutine of "Yyy" class => VM functionName is "Yyy.xxx"
+        VMfunctionName = self.className + "." + self.cur_subroutineName
         numLocals      = self.symboltable.varCount("var")
         self.vmwriter.writeFunction(VMfunctionName, numLocals)
-        '''
-        if VMfunc is method, you need to add VMcode that set "this" segment base.
-        if VMfunc is constructor, you need to Memory.alloc(size) for the object, 
-        and set "this" segment base to the alloc-obj base.
-        '''
+
+        if self.cur_subroutineType == "constructor":
+            # if VMfunc is constructor, "this"=Memory.alloc(size of field) and return this.            
+            numfield = self.symboltable.varCount("field")
+            self.vmwriter.writePush("constant", numfield)
+            self.vmwriter.writeCall("Memory.alloc", 1)
+            self.vmwriter.writePop("pointer", 0)
+            
         numArgs = self.symboltable.varCount("argument")                
         for args in range(numArgs):
-            if self.subroutineType == "method" and args == 0:
+            # push all argument from segment to stack
+            self.vmwriter.writePush("argument", args)
+            if self.cur_subroutineType == "method" and args == 0:
                 # if VMfunc is "method", need to push arg0="this" to set it as "this" segment base.
-                self.vmwriter.writePush("argument", 0)
                 self.vmwriter.writePop("pointer", 0)
-            else:
-                # push arguments from stack to segment "arguments"                
-                self.vmwriter.writePush("argument", args)
-            
+
         self.compileStatements()
         self.analysisTerminal("SYMBOL", "}")
         return 
@@ -298,12 +268,12 @@ class CompilationEngine:
         self.analysisTerminal("KEYWORD", keyWord)
         dataType = self.compileType()
         varName  = self.analysisTerminal("IDENTIFIER")
-        self.regIdentifier2SymbolTable(varName, keyWord, dataType, kind)
+        self.append2SymbolTable(varName, keyWord, dataType, kind)
         # (',' varName)* ;
         while self.isTerminal("SYMBOL", ","):
             self.analysisTerminal("SYMBOL", ",")
             varName = self.analysisTerminal("IDENTIFIER")
-            self.regIdentifier2SymbolTable(varName, keyWord, dataType, kind)
+            self.append2SymbolTable(varName, keyWord, dataType, kind)
             
         self.analysisTerminal("SYMBOL", ";")
         return 
@@ -336,7 +306,7 @@ class CompilationEngine:
         "do" ignore ret-val
         '''        
         self.analysisTerminal("KEYWORD", "do")
-        self.compileSubroutineCall();
+        self.compileSubroutineCall("Do");
         self.analysisTerminal("SYMBOL", ";")
 
         self.vmwriter.writePop("temp", 0) # pop compieExpression() val from stack
@@ -431,7 +401,6 @@ class CompilationEngine:
         self.analysisTerminal("KEYWORD", "return")
         if self.isExpression():
             self.compileExpression()
-            # TODO:writeVMcode, return val
         else:
             # void-func should return 0. And the code call void-func, should pop return-val=0
             self.vmwriter.writePush("constant", 0)
@@ -509,13 +478,12 @@ class CompilationEngine:
                 # false = null = 0
                 self.vmwriter.writePush("constant", 0)
             elif fixVal == "this":
-                self.vmwriter.writePush("this", 0) # TODO
+                self.vmwriter.writePush("pointer", 0) # return "this" segment base addr
                 
         elif self.isTerminal("SYMBOL", "\("):
             self.analysisTerminal("SYMBOL", "\(")
             self.compileExpression()
             self.analysisTerminal("SYMBOL", "\)")
-            # TODO:writeVMcode
             
         elif self.isTerminal("SYMBOL", "\-|\~"):
             # unaryOp(-|~) term
@@ -543,7 +511,7 @@ class CompilationEngine:
                 
             elif self.isTerminal("SYMBOL", "\(") or self.isTerminal("SYMBOL", "\."):
                 # subroutineCall
-                self.compileSubroutineCall(tmpName)
+                self.compileSubroutineCall("Let", tmpName)
             else:
                 # varName
                 self.pushIdentifier(tmpName)  
@@ -567,42 +535,58 @@ class CompilationEngine:
 
         return ret
     
-    def compileSubroutineCall(self, already_read_head=None):
+    def compileSubroutineCall(self, flag, already_read_head=None):
         '''
         subroutineName '(' expressionList ')' | 
         (className | varName) '.' subroutineName '(' expressionList ')'
         '''
         numArgs = 0
         head    = already_read_head
+        subroutineType = None
+        varName = None
         if head == None:
             head = self.analysisTerminal("IDENTIFIER") # subroutineName | className | varName
         if self.isTerminal("SYMBOL", "\("):
-            # subroutineName '(' expressionList ')'
-            subroutineName = head
-            self.analysisTerminal("SYMBOL", "\(")
-            numArgs = self.compileExpressionList()
-            self.analysisTerminal("SYMBOL", "\)")
+            # subroutineName '(' expressionList ')' => "this.subroutineName" method
+            subroutineName = self.className + "." + head
+            subroutineType = "method"
         elif self.isTerminal("SYMBOL", "\."):
             # (className | varName) '.' subroutineName '(' expressionList ')'
-            classOrvarName = head
+            className = ""
+            dataType = self.symboltable.typeOf(head)
+            if len(dataType) > 0 and not dataType in ["int", "char", "boolean"]:
+                # varName(in SymbolTable).subroutineName => method
+                # varName = "this" segment base addr
+                className = dataType
+                varName   = head
+                subroutineType = "method"
+            else:
+                # className.subroutineName => constructor or method
+                # let varName = className.subroutine => constructor
+                # do  className.subroutine           => function
+                className = head                  
+                if flag == "Let":
+                    subroutineType = "constructor"
+                elif flag == "Do":
+                    subroutineType = "function"                     
+
             self.analysisTerminal("SYMBOL", "\.")
             subroutineName = self.analysisTerminal("IDENTIFIER")
-            subroutineName = classOrvarName + "." + subroutineName # like className.subroutineName
-            self.analysisTerminal("SYMBOL", "\(")
-            numArgs = self.compileExpressionList()
-            self.analysisTerminal("SYMBOL", "\)")
+            subroutineName = className + "." + subroutineName # like className.subroutineName                
 
-        # TODO:writeVMcode, Before call Subroutine, you need push argument to stack.
-        # numArgs = self.symboltable.varCount("argument")        
-        # for args in range(numArgs):
-        #     self.vmwriter.writePush("argument", args)
-        #     if objType == "method" and args == 0:
-        #         # if VMfunc is "method", need to push refer-obj "this" as first-argument (like python self)
-        #         self.vmwriter.writePush("argument", 0)
-        #         self.vmwriter.writePop("pointer", 0)
-        #     else:
-        #         self.vmwriter.writePush("argument", args)
-        
+        if subroutineType == "method":
+            # if VMfunc is "method", need to push obj-addr as Arg0
+            numArgs += 1
+            if not varName == None:
+                self.pushIdentifier(varName)
+            else:
+                # if varName(objct Name)=None, caller already has "this" as Arg0, and push it to "pointer".
+                self.vmwriter.writePush("pointer", 0) 
+            
+        self.analysisTerminal("SYMBOL", "\(")
+        numArgs += self.compileExpressionList()
+        self.analysisTerminal("SYMBOL", "\)")
+
         self.vmwriter.writeCall(subroutineName, numArgs)
         
         return
