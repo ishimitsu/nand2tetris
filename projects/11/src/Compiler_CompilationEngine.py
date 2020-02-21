@@ -13,7 +13,7 @@ class CompilationEngine:
         self.tokenizer      = tokenizer
         self.className = self.cur_subroutineName = self.cur_subroutineType = None
         self.label_idx_while = self.label_idx_if = 0
-        
+
         self.nextToken() # get first token
         return
 
@@ -114,8 +114,6 @@ class CompilationEngine:
             segment = "static"
         elif kind == "field":
             segment = "this"
-        else:
-            print(varName)            
             
         return segment, index
     
@@ -306,7 +304,7 @@ class CompilationEngine:
         "do" ignore ret-val
         '''        
         self.analysisTerminal("KEYWORD", "do")
-        self.compileSubroutineCall("Do");
+        self.compileSubroutineCall("do");
         self.analysisTerminal("SYMBOL", ";")
 
         self.vmwriter.writePop("temp", 0) # pop compieExpression() val from stack
@@ -324,16 +322,19 @@ class CompilationEngine:
             self.analysisTerminal("SYMBOL", "\[")
             self.compileExpression()
             self.analysisTerminal("SYMBOL", "\]")
+            
             self.pushIdentifier(varName)
             self.vmwriter.writeArithmetic("add")
-            self.vmwriter.writePop("pointer", 1) # set pointer to *(varName + expression)
+            self.vmwriter.writePop("temp", 0) # backup address *(varName + expression) 
 
         self.analysisTerminal("SYMBOL", "\=")
         self.compileExpression()
         self.analysisTerminal("SYMBOL", ";")
 
         if isArrayAccess:
-            self.vmwriter.writePop("that", 0) # pop expression to *(varName + expression)
+            self.vmwriter.writePush("temp", 0)   # restore address   *(varName + expression)             
+            self.vmwriter.writePop("pointer", 1)
+            self.vmwriter.writePop("that", 0)    # pop result to *(varName + expression)
         else:
             self.popIdentifier(varName) # pop result to segment of varName
         
@@ -461,13 +462,13 @@ class CompilationEngine:
         elif self.isTerminal("STRING_CONST"): 
             strVal = self.analysisTerminal("STRING_CONST")
             strLen = len(strVal)
-            self.vmwriter.writePush("constant", strLen)         
+            self.vmwriter.writePush("constant", strLen)
             self.vmwriter.writeCall("String.new", 1)
             for i in range(strLen):
                 c = ord(strVal[i])
                 self.vmwriter.writePush("constant", c)
                 self.vmwriter.writeCall("String.appendChar", 2)
-
+            
         elif self.isTerminal("KEYWORD", "true|false|null|this"):            
             fixVal = self.analysisTerminal("KEYWORD", "true|false|null|this")
             if fixVal == "true":
@@ -498,20 +499,20 @@ class CompilationEngine:
             # varName | varName '[' expression ']' | subroutineCall
             tmpName = self.analysisTerminal("IDENTIFIER") # varName | subroutineName
             if self.isTerminal("SYMBOL", "\["):
-                # varName '[' expression ']'
+                # varName '[' expression ']' => Array Access
                 varName = tmpName
                 self.analysisTerminal("SYMBOL", "\[")
                 self.compileExpression()
                 self.analysisTerminal("SYMBOL", "\]")
-                
-                self.pushIdentifier(varName)                
+
+                self.pushIdentifier(varName)
                 self.vmwriter.writeArithmetic("add")
                 self.vmwriter.writePop("pointer", 1) # set pointer to *(varName + expression)
                 self.vmwriter.writePush("that", 0)   # push the value of *(varName + expression)
                 
             elif self.isTerminal("SYMBOL", "\(") or self.isTerminal("SYMBOL", "\."):
                 # subroutineCall
-                self.compileSubroutineCall("Let", tmpName)
+                self.compileSubroutineCall("let", tmpName)
             else:
                 # varName
                 self.pushIdentifier(tmpName)  
@@ -565,9 +566,9 @@ class CompilationEngine:
                 # let varName = className.subroutine => constructor
                 # do  className.subroutine           => function
                 className = head                  
-                if flag == "Let":
+                if flag == "let":
                     subroutineType = "constructor"
-                elif flag == "Do":
+                elif flag == "do":
                     subroutineType = "function"                     
 
             self.analysisTerminal("SYMBOL", "\.")
