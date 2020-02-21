@@ -124,11 +124,16 @@ class JackTokenizer:
         separate words by term_symbol_regexp, and treat each of them as a token.
         '''
         token_cnt = 0
-        separated_w = re.split(self.term_symbol_regexp, words)
-        for i in range(len(separated_w)):
-            if len(separated_w[i]) > 0:
-                token_list.append(separated_w[i])
-                token_cnt += 1
+        if words.startswith('\"') and words.endswith('\"'):
+            # words is "string_const"
+            token_list.append(words)
+            token_cnt += 1
+        else:
+            separated_w = re.split(self.term_symbol_regexp, words)
+            for i in range(len(separated_w)):
+                if len(separated_w[i]) > 0:
+                    token_list.append(separated_w[i])
+                    token_cnt += 1
                 
         return token_cnt
     
