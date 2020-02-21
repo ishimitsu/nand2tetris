@@ -324,17 +324,18 @@ class CompilationEngine:
             self.analysisTerminal("SYMBOL", "\]")
             
             self.pushIdentifier(varName)
-            self.vmwriter.writeArithmetic("add")
-            self.vmwriter.writePop("temp", 0) # backup address *(varName + expression) 
+            self.vmwriter.writeArithmetic("add") # pop address of *(varName + expression) to stack
 
         self.analysisTerminal("SYMBOL", "\=")
         self.compileExpression()
         self.analysisTerminal("SYMBOL", ";")
 
         if isArrayAccess:
-            self.vmwriter.writePush("temp", 0)   # restore address   *(varName + expression)             
-            self.vmwriter.writePop("pointer", 1)
-            self.vmwriter.writePop("that", 0)    # pop result to *(varName + expression)
+            self.vmwriter.writePop("temp", 0)    # Once store result of " = expression;"
+            self.vmwriter.writePop("pointer", 1) # get address of *(varName + expression) from stack
+            self.vmwriter.writePush("temp", 0)   # push result of " = expression;" to stack
+            
+            self.vmwriter.writePop("that", 0)    # pop result result of " = expression;" to *(varName + expression)
         else:
             self.popIdentifier(varName) # pop result to segment of varName
         
