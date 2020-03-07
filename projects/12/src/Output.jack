@@ -15,12 +15,40 @@
  * as a small filled square, indicates where the next character will be displayed.
  */
 class Output {
-
+    // Memory Map of SCREEN
+    static int ram_screen;
+    // screen pix size
+    static int scr_pix_row, scr_pix_col;
+    // grid size(cursor size)
+    static int grid_line, grid_col;
+    // screen size
+    static int screen_line, screen_col;
+    static int max_x, max_y;
+    // location of cursor
+    static int cursor_line, cursor_col;
+    
     // Character map for displaying characters
     static Array charMaps; 
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
+        let ram_screen  = 16384;
+        let scr_pix_row = 256;
+        let scr_pix_col = 512;
+        let grid_line   = 11;
+        let grid_col    = 8;
+        
+        let screen_line = 22; // 0 <= line   <= 22 (scr_pix_row / 11)
+        let screen_col  = 63; // 0 <= column <= 63 (scr_pix_col / 8)
+        let max_x       = Math.multiply(screen_line, grid_line) + grid_line; // line*11  <= x < line*11 + 11
+        let max_y       = Math.multiply(screen_col, grid_col) + grid_col;    // column*8 <= y < column*8 + 8
+
+        /** Initialize cursor location */
+        let cursor_line = 0;
+        let cursor_col  = 0;
+
+        do Output.initMap();
+        return;
     }
 
     // Initializes the character map array
@@ -71,7 +99,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,62,51,51,63,51,51,51,51,0,0); // A ** TO BE FILLED **
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -173,31 +201,188 @@ class Output {
         return charMaps[c];
     }
 
+    // x % y = remain
+    function int Mod (int x, int y) {
+        var int quo, remain;
+        let quo    = Math.divide(x, y);
+        let remain = x - Math.multiply(quo, y);
+        return remain;
+    }
+
+    // set n bit of x to val
+    function int setBit (int x, int n, int val) {
+        var int i, j, ret;
+        let i = 0;        
+        let j = 1;
+        while (i < n) {
+            let j = Math.multiply(j, 2);
+            let i = i + 1;
+        }
+
+        if (val = 0) {
+            let ret = x & ~(j); // n bit of x = 0            
+        } else {
+            let ret = x | j;  // n bit of x = 1
+        }
+        return ret;
+    }
+    
+    // get n bit of x
+    function int getBit (int x, int n) {
+        var int i, j, ret;
+        let i = 0;        
+        let j = 1;
+        while (i < n) {
+            let j = Math.multiply(j, 2);
+            let i = i + 1;
+        }
+        let ret = x & j;
+        return ret;
+    }
+
+    // Draw Pixel to Screen[row*32 + col/16] = 16384 + row*32 + col/16
+    // "col % 16" bit of "Screen[row*32 + col/16] value" will affect row*col pixel.
+    // Please check 5.2.4
+    function void drawPixel(int x, int y, int pix) {
+        var int address, in, x_remain, val;
+        let x_remain = Output.Mod(x, 16);
+        let address  = ram_screen + Math.multiply(y, 32) + Math.divide(x, 16);
+        let val      = Memory.peek(address);
+        let in       = Output.setBit(val, x_remain, pix);
+        do Memory.poke(address, in);
+        return ;
+    }
+    
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
+        var int x, y, x_end, y_end, x_start;
+        let cursor_line = i;
+        let cursor_col  = j;        
+
+        let x_start = Math.multiply(j, grid_col);
+        let x_end   = x_start + grid_col;
+        let y       = Math.multiply(i, grid_line);
+        let y_end   = y + grid_line;
+        
+        while(y < y_end) {
+            let x = x_start;            
+            while(x < x_end) {
+                do Output.drawPixel(x, y, 0);
+                let x = x + 1;                
+            }
+            let y = y + 1;
+        }
+        
+        return ;
     }
 
+    // move cursor to next    
+    function void moveCursorNext() {
+        var int cur_line, cur_col;
+        let cur_line = cursor_line;
+        let cur_col  = cursor_col;
+        
+        let cur_col = cur_col + 1;
+        if (cur_col = screen_col) {
+            // if cursor reaches endline(63, n), move next line head(0, n+1).
+            let cur_col = 0;
+            let cur_line = cur_line + 1;
+            if (cur_line = screen_line) {
+                // if cursor reaches screen end(63, 22), move (0, 0)
+                let cur_line = 0;
+            }
+        }
+        do Output.moveCursor(cur_line, cur_col);
+        return;
+    }
+    // move cursor to next    
+    function void moveCursorBack() {
+        var int cur_line, cur_col;
+        let cur_line = cursor_line;
+        let cur_col  = cursor_col;
+        
+        let cur_col = cur_col - 1;
+        if (cur_col < 0) {
+            // if cursor reaches startline(0, n), move prev line end(63, n-1).
+            let cur_col  = screen_col;
+            let cur_line = cur_line - 1;
+            if (cur_line < 0) {
+                // if cursor reaches screen(0, 0), stop (0,0)
+                let cur_col = 0;                
+                let cur_line = 0;
+            }
+        }
+        do Output.moveCursor(cur_line, cur_col);
+        return;
+    }
+    
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
+        var int x, y, x_start, x_end;
+        var int line, n, map_val, pix_val;
+        var Array cmap;        
+        let cmap    = Output.getMap(c);
+        let x_start = Math.multiply(cursor_col,  grid_col);
+        let x_end   = x_start + grid_col;
+        let y       = Math.multiply(cursor_line, grid_line);
+        let line    = 0;
+        while(line < grid_line) {
+            let map_val = cmap[line];
+            let x = x_start;
+            let n = 0;
+            while(x < x_end) {
+                let pix_val = Output.getBit(map_val, n);
+                do Output.drawPixel(x, y, pix_val);
+                let n = n + 1;
+                let x = x + 1;  
+            }
+            let y = y + 1;            
+            let line = line + 1;
+        }
+
+        return ;
     }
 
     /** displays the given string starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printString(String s) {
+        var int strlen, i;
+        var char c;
+        
+        let strlen = s.length();
+        let i = 0;
+        while(i < strlen) {
+            let c = s.charAt(i);
+            do Output.printChar(c);
+            do Output.moveCursorNext();
+            let i = i + 1;
+        }
+        
+        return ;        
     }
 
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
+        var String int2str;
+        let int2str = String.new(6); // max 16bit = -32768 ~ 32767(6 length)
+        do int2str.setInt(i);
+        do Output.printString(int2str);
+        do int2str.dispose();
+        return ;        
     }
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
+        do Output.moveCursor(cursor_line+1, 0);
+        return ;        
     }
 
     /** Moves the cursor one column back. */
     function void backSpace() {
+        do Output.moveCursorBack();        
+        return ;
     }
 }
