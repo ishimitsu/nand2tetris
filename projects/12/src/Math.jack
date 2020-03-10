@@ -187,7 +187,7 @@ class Math {
     function int mod (int x, int y) {
         var int quo, remain;
         let quo    = x / y;
-        let remain = x - quo * y;
+        let remain = x - (quo * y);
         return remain;
     }
     
@@ -200,8 +200,10 @@ class Math {
         // j = n/2-1 ... 0
         while (j > 0) {
             let next_y  = y + Math.exp(2, j);
-            let next_y2 = next_y * next_y;
+            let next_y2 = next_y * next_y; 
             if( ( (next_y2 - 1) < x) & (next_y2 > 0) ) { // next_y <= x & next_y2 > 0
+                /** if next_y > 181, next_y2=182*182=33124 will overflow 16bit(32767) */
+                /** So check next_y2 > 0 for avoiding overflow */
                 let y = next_y;
             }
             let j = j - 1;

@@ -40,8 +40,8 @@ class Output {
         
         let screen_line = 22; // 0 <= line   <= 22 (scr_pix_row / 11)
         let screen_col  = 63; // 0 <= column <= 63 (scr_pix_col / 8)
-        let max_x       = Math.multiply(screen_line, grid_line) + grid_line; // line*11  <= x < line*11 + 11
-        let max_y       = Math.multiply(screen_col, grid_col) + grid_col;    // column*8 <= y < column*8 + 8
+        let max_x       = (screen_line * grid_line) + grid_line; // line*11  <= x < line*11 + 11
+        let max_y       = (screen_col  * grid_col) + grid_col;    // column*8 <= y < column*8 + 8
 
         /** Initialize cursor location */
         let cursor_line = 0;
@@ -201,54 +201,15 @@ class Output {
         return charMaps[c];
     }
 
-    // x % y = remain
-    function int Mod (int x, int y) {
-        var int quo, remain;
-        let quo    = Math.divide(x, y);
-        let remain = x - Math.multiply(quo, y);
-        return remain;
-    }
-
-    // set n bit of x to val
-    function int setBit (int x, int n, int val) {
-        var int i, j, ret;
-        let i = 0;        
-        let j = 1;
-        while (i < n) {
-            let j = Math.multiply(j, 2);
-            let i = i + 1;
-        }
-
-        if (val = 0) {
-            let ret = x & ~(j); // n bit of x = 0            
-        } else {
-            let ret = x | j;  // n bit of x = 1
-        }
-        return ret;
-    }
-    
-    // get n bit of x
-    function int getBit (int x, int n) {
-        var int i, j, ret;
-        let i = 0;        
-        let j = 1;
-        while (i < n) {
-            let j = Math.multiply(j, 2);
-            let i = i + 1;
-        }
-        let ret = x & j;
-        return ret;
-    }
-
     // Draw Pixel to Screen[row*32 + col/16] = 16384 + row*32 + col/16
     // "col % 16" bit of "Screen[row*32 + col/16] value" will affect row*col pixel.
     // Please check 5.2.4
     function void drawPixel(int x, int y, int pix) {
         var int address, in, x_remain, val;
-        let x_remain = Output.Mod(x, 16);
-        let address  = ram_screen + Math.multiply(y, 32) + Math.divide(x, 16);
+        let x_remain = Math.mod(x, 16);
+        let address  = ram_screen + (y * 32) + (x / 16);
         let val      = Memory.peek(address);
-        let in       = Output.setBit(val, x_remain, pix);
+        let in       = Math.setBit(val, x_remain, pix);
         do Memory.poke(address, in);
         return ;
     }
@@ -260,9 +221,9 @@ class Output {
         let cursor_line = i;
         let cursor_col  = j;        
 
-        let x_start = Math.multiply(j, grid_col);
+        let x_start = j * grid_col;
         let x_end   = x_start + grid_col;
-        let y       = Math.multiply(i, grid_line);
+        let y       = i * grid_line;
         let y_end   = y + grid_line;
         
         while(y < y_end) {
@@ -324,16 +285,16 @@ class Output {
         var int line, n, map_val, pix_val;
         var Array cmap;        
         let cmap    = Output.getMap(c);
-        let x_start = Math.multiply(cursor_col,  grid_col);
+        let x_start = cursor_col * grid_col;
         let x_end   = x_start + grid_col;
-        let y       = Math.multiply(cursor_line, grid_line);
+        let y       = cursor_line * grid_line;
         let line    = 0;
         while(line < grid_line) {
             let map_val = cmap[line];
             let x = x_start;
             let n = 0;
             while(x < x_end) {
-                let pix_val = Output.getBit(map_val, n);
+                let pix_val = Math.getBit(map_val, n);
                 do Output.drawPixel(x, y, pix_val);
                 let n = n + 1;
                 let x = x + 1;  
