@@ -86,14 +86,15 @@ class String {
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
-        var int  neg, i, v, d;
+        var int i, v, d;
+        var boolean neg;
 
+        let neg = false;
         let v = 0;        
         if (str[0] = 45) {
-            let neg = 1;
+            let neg = true;
             let i = 1;            
         } else {
-            let neg = 0;
             let i = 0;            
         }
 
@@ -108,8 +109,8 @@ class String {
                 let i = i + 1;
             }
         }
-        if(neg = 1) {
-            let v = 0 - v;
+        if(neg) {
+            let v = ~(v) + 1;
         }
         
         return v;
@@ -117,24 +118,26 @@ class String {
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
-        var int  neg, digit, lastdigit, i, j, m, n;
+        var int  digit, lastdigit, i, j, m, n;
         var char c;
+        var boolean neg;
         var Array tmp;
 
+        let neg = false;
         if (val < 0) {
-            let neg   = 1;
+            let neg   = true;
             let digit = Math.abs(val);
         } else {
-            let neg   = 0;
             let digit = val;            
         }
 
         let i   = 0;
         let tmp = Array.new(maxlen);
         while (i < maxlen) {
-            let n = Math.divide(digit, 10);
-            let m = Math.multiply(n, 10);
+            let n = digit / 10;
+            let m = n * 10;
             let lastdigit = digit - m;  /** n % 10 */
+            // let lastdigit = Math.mod(digit, 10);
             let tmp[i]    = lastdigit + 48;
             let i = i + 1;
             let digit = n;
@@ -144,7 +147,7 @@ class String {
                     let tmp[i] = digit + 48;
                     let i = i + 1;
                 }
-                if( (neg = 1) & (i < maxlen) ) {
+                if( (neg) & (i < maxlen) ) {
                     let tmp[i] = 45; // "-"
                     let i = i + 1;
                 }
