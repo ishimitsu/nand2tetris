@@ -141,15 +141,16 @@ class Math {
     function int divide_sub(int x, int y) {
         var int q;
         // x >= 0, y > 0 
-        if (y > x) {
+        if ( (y > x) | (y < 0) )  {
+            // y < 0 => prev y+y overflow 16bit(32767)
             return 0;
         }
-        let q = Math.divide(x, y + y);
+        let q = Math.divide_sub(x, y + y);        
         let q = q + q;
         if ( x - (q * y) < y) {
             return q;
         }
-        return q + 1;   
+        return q + 1;
     }
     function int divide(int x, int y) {
         var int n, m, q;
