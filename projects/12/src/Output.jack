@@ -303,6 +303,7 @@ class Output {
             let line = line + 1;
         }
 
+        do Output.moveCursorNext();        
         return ;
     }
 
@@ -317,7 +318,6 @@ class Output {
         while(i < strlen) {
             let c = s.charAt(i);
             do Output.printChar(c);
-            do Output.moveCursorNext();
             let i = i + 1;
         }
         
