@@ -245,11 +245,11 @@ class Output {
         let cur_col  = cursor_col;
         
         let cur_col = cur_col + 1;
-        if (cur_col = screen_col) {
+        if (cur_col > screen_col) {
             // if cursor reaches endline(63, n), move next line head(0, n+1).
             let cur_col = 0;
             let cur_line = cur_line + 1;
-            if (cur_line = screen_line) {
+            if (cur_line > screen_line) {
                 // if cursor reaches screen end(63, 22), move (0, 0)
                 let cur_line = 0;
             }
