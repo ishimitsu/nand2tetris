@@ -14,14 +14,14 @@ class Screen {
     static int scr_ram;
     // screen size
     static int scr_line, scr_col;
-    static int scr_color;
+    static boolean scr_color;
     
     /** Initializes the Screen. */
     function void init() {
         let scr_ram   = 16384;
         let scr_line  = 256; // 0 <= line < 256
         let scr_col   = 512;  // 0 <= col  < 512
-        let scr_color = 0;
+        let scr_color = true;
         return ;
     }
 
@@ -46,11 +46,7 @@ class Screen {
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
-        if (b) {
-            let scr_color = 1;
-        } else {
-            let scr_color = 0;            
-        }
+        let scr_color = b;
         return ;
     }
 
@@ -62,7 +58,12 @@ class Screen {
         let addr = scr_ram + (y * 32) + (x / 16);
         let cur  = Memory.peek(addr);        
         let bit  = Math.mod(x, 16);
-        let in   = Math.setBit(cur, bit, 1);
+
+        if (scr_color) {
+            let in = Math.setBit(cur, bit, 1);
+        } else {
+            let in = Math.setBit(cur, bit, 0);            
+        }
         do Memory.poke(addr, in);
         return ;
     }
@@ -88,7 +89,6 @@ class Screen {
             let dy    = Math.abs(dy);                    
         }
 
-        do Screen.setColor(true);
         if ( (dx > 0) & (dy > 0) ) {
             while ( (a < (dx+1)) & (b < (dy+1)) ) {
                 if(xPlus) {
@@ -142,30 +142,71 @@ class Screen {
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
-        do Screen.drawLine(x1, y1, x2, y1);
-        do Screen.drawLine(x2, y1, x2, y2);
-        do Screen.drawLine(x1, y1, x1, y2);                
-        do Screen.drawLine(x1, y2, x2, y2);
+        var int y, end;
+
+        // fill black or while
+        if(y1 < y2) {
+            let y   = y1;
+            let end = y2;
+        } else {
+            let y   = y2;
+            let end = y1;
+        }
+        while(y < end) {
+            do Screen.drawLine(x1, y, x2, y);
+            let y = y + 1;
+        }
+        
+        if (scr_color) {
+            return ;
+        } else {
+            do Screen.setColor(true);
+            do Screen.drawLine(x1, y1, x2, y1);
+            do Screen.drawLine(x2, y1, x2, y2);
+            do Screen.drawLine(x1, y1, x1, y2);
+            do Screen.drawLine(x1, y2, x2, y2);
+            do Screen.setColor(false);            
+        }
+
         return ;
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
     function void drawCircle(int x, int y, int r) {
         var int dy, r2, rMinusdy, x1, x2, y1, y2;
+        if (r > 181) {
+            // r > 181 will overflow
+            let r2 = 32761; // 181*181
+        } else {
+            let r2 = r * r;
+        }
         let dy = 0;
-        let r2 = r * r;
+
+        // FIXME: This algorithm is too slow !
         while (dy < (r+1)) {
+            
             let rMinusdy = Math.sqrt(r2 - (dy * dy));
             let x1 = x - rMinusdy;
             let x2 = x + rMinusdy;
             let y1 = y + dy;
-            let y2 = y - dy;            
-            do Screen.drawLine(x1, y1, x2, y1);
-            do Screen.drawLine(x1, y2, x2, y2);
+            let y2 = y - dy;
+            if(scr_color) {
+                // black                
+                do Screen.drawLine(x1, y1, x2, y1);
+                do Screen.drawLine(x1, y2, x2, y2);
+            } else {
+                // while
+                do Screen.setColor(true);                                
+                do Screen.drawPixel(x1, y1);
+                do Screen.drawPixel(x2, y1);                
+                do Screen.drawPixel(x1, y2);
+                do Screen.drawPixel(x2, y2);
+                do Screen.setColor(false);             
+            }
             
             let dy = dy + 1;
         }
         
-        return ;        
+        return ;
     }
 }
