@@ -54,15 +54,18 @@ class Screen {
     /** "col % 16" bit of "Screen[row*32 + col/16] value" will affect row*col pixel. */
     /** Please check 5.2.4 */
     function void drawPixel(int x, int y) {
-        var int addr, bit, in, cur;
-        let addr = scr_ram + (y * 32) + (x / 16);
-        let cur  = Memory.peek(addr);        
-        let bit  = Math.mod(x, 16);
+        var int addr, yMul32, xDiv16, xRem16, in, cur;
+        let yMul32 = y * 32;
+        let xDiv16 = x / 16;
+        // let xRem16  = Math.mod(x, 16);                
+        let xRem16 = x - (xDiv16 * 16);
+        let addr   = scr_ram + yMul32 + xDiv16;
+        let cur    = Memory.peek(addr);        
 
         if (scr_color) {
-            let in = Math.setBit(cur, bit, 1);
+            let in = Math.setBit(cur, xRem16, 1);
         } else {
-            let in = Math.setBit(cur, bit, 0);            
+            let in = Math.setBit(cur, xRem16, 0);            
         }
         do Memory.poke(addr, in);
         return ;
@@ -142,18 +145,42 @@ class Screen {
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
-        var int y, end;
-
-        // fill black or while
-        if(y1 < y2) {
-            let y   = y1;
-            let end = y2;
+        var int x, y;
+        var int addr, yMul32, xDiv16, xRem16, in, bit, val;        
+        // Precondition: x1 < x2, y1 < y2
+        
+        if (scr_color) {
+            let val = 1;
         } else {
-            let y   = y2;
-            let end = y1;
+            let val = 0;                
         }
-        while(y < end) {
-            do Screen.drawLine(x1, y, x2, y);
+
+        let y = y1;        
+        while(y < y2) {
+            // fill black or while
+            
+            // do Screen.drawLine(x1, y, x2, y);
+            let yMul32 = y * 32;
+            let x = x1;
+            while (x < x2) {
+                // do Screen.drawPixel(x, y);
+                let xDiv16 = x / 16;
+                let xRem16 = x - (xDiv16 * 16);
+                let addr   = scr_ram + yMul32 + xDiv16;            
+                let in     = Memory.peek(addr);
+                let bit    = xRem16;
+                while ( (bit < 16) & ( (x + bit) < x2) ) {
+                    let in  = Math.setBit(in, bit, val);
+                    let bit = bit + 1;
+                }
+                do Memory.poke(addr, in);
+
+                if (xRem16 = 0) {
+                    let x = x + 16;
+                } else {
+                    let x = x + (16 - xRem16); // if x is indivisible, change to be enable divisible
+                }
+            }
             let y = y + 1;
         }
         
