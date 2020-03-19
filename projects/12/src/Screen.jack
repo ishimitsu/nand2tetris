@@ -142,45 +142,57 @@ class Screen {
         return ;
     }
 
-    /** Draws a filled rectangle whose top left corner is (x1, y1)
-     * and bottom right corner is (x2,y2), using the current color. */
-    function void drawRectangle(int x1, int y1, int x2, int y2) {
-        var int x, y;
-        var int addr, yMul32, xDiv16, xRem16, in, bit, val;        
-        // Precondition: x1 < x2, y1 < y2
-        
-        if (scr_color) {
-            let val = 1;
-        } else {
-            let val = 0;                
-        }
+    function void drawHorizontalLine(int x1, int x2, int y) {
+        var int x;
+        var int addr, yMul32, xDiv16, xRem16, in, allbit, bit, val;  
 
-        let y = y1;        
-        while(y < y2) {
-            // fill black or while
-            
-            // do Screen.drawLine(x1, y, x2, y);
-            let yMul32 = y * 32;
-            let x = x1;
-            while (x < x2) {
-                // do Screen.drawPixel(x, y);
-                let xDiv16 = x / 16;
-                let xRem16 = x - (xDiv16 * 16);
-                let addr   = scr_ram + yMul32 + xDiv16;            
-                let in     = Memory.peek(addr);
-                let bit    = xRem16;
-                while ( (bit < 16) & ( (x + bit) < x2) ) {
+        let allbit = -1; // all 16bit = 1
+        let val = 1;            
+        if (scr_color) {
+            let allbit = -1; // all 16bit = 1
+            let val = 1;            
+        } else {
+            let allbit = 0;
+            let val = 0;             
+        }
+        
+        let x = x1;
+        let yMul32 = y * 32;
+        while (x < x2) {
+            let xDiv16 = x / 16;
+            let xRem16 = x - (xDiv16 * 16);                
+            let addr   = scr_ram + yMul32 + xDiv16;            
+            if ( (xRem16 = 0) & ( (x+16) < x2) ) {
+                let in = allbit;
+            } else {
+                let bit = xRem16;
+                let in  = Memory.peek(addr);
+                // while ( (bit < 16) & ( (x + bit) < x2 ) {                
+                while ( (bit < 16) & ( (x + bit) < (x2 + xRem16) ) ) {
                     let in  = Math.setBit(in, bit, val);
                     let bit = bit + 1;
                 }
-                do Memory.poke(addr, in);
-
-                if (xRem16 = 0) {
-                    let x = x + 16;
-                } else {
-                    let x = x + (16 - xRem16); // if x is indivisible, change to be enable divisible
-                }
             }
+            do Memory.poke(addr, in);
+
+            if (xRem16 = 0) {
+                let x = x + 16;
+            } else {
+                let x = x + (16 - xRem16); // if x is indivisible, change to be enable divisible
+            }
+        }
+        return ;
+    }
+    
+    /** Draws a filled rectangle whose top left corner is (x1, y1)
+     * and bottom right corner is (x2,y2), using the current color. */
+    function void drawRectangle(int x1, int y1, int x2, int y2) {
+        var int y;
+        // Precondition: x1 < x2, y1 < y2
+        let y = y1;        
+        while(y < y2) {
+            // fill black or while
+            do Screen.drawHorizontalLine(x1, x2, y);
             let y = y + 1;
         }
         
@@ -199,39 +211,47 @@ class Screen {
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
+    // Bresenham    
     function void drawCircle(int x, int y, int r) {
-        var int dy, r2, rMinusdy, x1, x2, y1, y2;
+        var int radius, dx, dy, center;
+        var int xPlusdx, xMinusdx, yPlusdy, yMinusdy;
         if (r > 181) {
-            // r > 181 will overflow
-            let r2 = 32761; // 181*181
+            let radius = 181; // r > 181 will overflow
         } else {
-            let r2 = r * r;
+            let radius = r;
         }
-        let dy = 0;
-
-        // FIXME: This algorithm is too slow !
-        while (dy < (r+1)) {
-            
-            let rMinusdy = Math.sqrt(r2 - (dy * dy));
-            let x1 = x - rMinusdy;
-            let x2 = x + rMinusdy;
-            let y1 = y + dy;
-            let y2 = y - dy;
-            if(scr_color) {
-                // black                
-                do Screen.drawLine(x1, y1, x2, y1);
-                do Screen.drawLine(x1, y2, x2, y2);
-            } else {
-                // while
-                do Screen.setColor(true);                                
-                do Screen.drawPixel(x1, y1);
-                do Screen.drawPixel(x2, y1);                
-                do Screen.drawPixel(x1, y2);
-                do Screen.drawPixel(x2, y2);
-                do Screen.setColor(false);             
+        let dx = 0;
+        let dy = radius;
+        let center = 2 - (radius + radius); //initial "(x+1)^2 + (y-1)^2 -r^2"
+        do Screen.drawPixel(x, y + radius);
+        do Screen.drawPixel(x, y - radius);
+        do Screen.drawPixel(x + radius, y);
+        do Screen.drawPixel(x - radius, y); 
+        do Screen.drawHorizontalLine(x - radius, x + radius, y);
+        
+        while ( (dy+1) > 0) {            
+            if ( (center + dy) > 0) {
+                let dy = dy - 1;
+                let center = center + (1 - (dy + dy));  // x^2 + (y-1)^2 -r^2
+            }
+            if ( ((center - dx) - 1) < 0) { // center - cx <= 0
+                let dx = dx + 1;
+                let center = center + (1 + (dx + dx));  // (x+1)^2 + y^2 -r^2
             }
             
-            let dy = dy + 1;
+            if ( (dy+1) > 0) { // dy >= 0
+                let xPlusdx  = x + dx;
+                let xMinusdx = x - dx;
+                let yPlusdy  = y + dy;
+                let yMinusdy = y - dy;                
+                do Screen.drawPixel(xPlusdx,  yPlusdy); // 0-90
+                do Screen.drawPixel(xMinusdx, yPlusdy); // 90-180
+                do Screen.drawPixel(xMinusdx, yMinusdy); // 180-270
+                do Screen.drawPixel(xPlusdx,  yMinusdy); // 270-360
+
+                do Screen.drawHorizontalLine(xMinusdx, xPlusdx, yPlusdy);
+                do Screen.drawHorizontalLine(xMinusdx, xPlusdx, yMinusdy);
+            }
         }
         
         return ;
