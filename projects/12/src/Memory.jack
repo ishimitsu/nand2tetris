@@ -9,26 +9,104 @@
  * consists of 32,768 words, each holding a 16-bit binary number.
  */ 
 class Memory {
-
+    static int heapBase, heapEnd, heapLen;
+    static int freeList, freeListEnd;
+    static Array memory;
+    
     /** Initializes the class. */
     function void init() {
+        let memory   = 0; // memory[0] = RAM[0]
+        
+        // heap area 2048 ~ 16383        
+        let heapBase     = 2048; 
+        let heapEnd      = 16383;
+        let heapLen      = heapEnd - heapBase;
+        
+        let freeList           = heapBase;
+        let freeListEnd        = heapBase+1;
+        let memory[freeList]   = heapLen;  // freeList.length = heapLength = 14335
+        let memory[freeList+1] = 0;        // freeList.next   = null
+        return;
     }
 
     /** Returns the RAM value at the given address. */
     function int peek(int address) {
+        return memory[address];
     }
 
     /** Sets the RAM value at the given address to the given value. */
     function void poke(int address, int value) {
+        let memory[address] = value;
+        return;
     }
 
     /** Finds an available RAM block of the given size and returns
      *  a reference to its base address. */
     function int alloc(int size) {
+        // Simple MMU
+        /* var int pointer;         */
+        /* let pointer = free; */
+        /* let free = free + size; */
+        
+        // First Fit
+        var int segBase, segLen, segPrev, segNext, rest, restLen, block;
+        
+        let segBase = freeList;
+        let segLen  = memory[segBase];
+        let segPrev = segBase;        
+        while (segLen < (size + 1)) {
+            let segPrev = segBase;
+            let segBase = memory[segBase+1]; // segment.next
+            if(segBase = 0) {
+                // there is no size of segment
+                // need deflag
+                return -1;
+            }
+            let segLen  = memory[segBase];   // segment.length
+        }
+        let segNext = memory[segBase + 1];
+        
+        // separate segment, return size of segment
+        let memory[segBase] = size + 1; // allocated segment base
+        let block           = segBase + 1;
+
+        // update freeList
+        if(segLen = (size + 1)) {
+            let memory[segPrev+1] = segNext;
+        } else {
+            // add separated (segLen-size+1) of segment to freeList            
+            let rest    = segBase + (size + 1);
+            let restLen = segLen - (size + 1);
+            let memory[rest]     = restLen;
+            let memory[rest+1] = segNext;
+
+            let freeList    = rest;
+            let freeListEnd = rest + 1;        
+        }
+        
+        return block;
     }
 
     /** De-allocates the given object (cast as an array) by making
      *  it available for future allocations. */
     function void deAlloc(Array o) {
+        var int segBase, segLen, curNext, i, j;
+        let segBase = o - 1;
+        let segLen  = o[-1];
+
+        // clear segBase ~ segLen
+        let i = segBase;
+        let j = segBase + segLen;
+        while (i < j) {
+            let memory[i] = 0;
+            let i = i + 1;
+        }
+       // add segment to freeList
+        let curNext            = freeList;        
+        let freeList           = segBase;
+        let memory[freeList]   = segLen;
+        let memory[freeList+1] = curNext;
+        
+        return ;
     }    
 }
