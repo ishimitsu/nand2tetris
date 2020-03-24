@@ -144,7 +144,7 @@ class Screen {
 
     function void drawHorizontalLine(int x1, int x2, int y) {
         var int x;
-        var int addr, yMul32, xDiv16, xRem16, in, allbit, bit, val;  
+        var int base, addr, yMul32, xDiv16, xRem16, in, allbit, bit, bitend, val;  
 
         let allbit = -1; // all 16bit = 1
         let val = 1;            
@@ -155,32 +155,56 @@ class Screen {
             let allbit = 0;
             let val = 0;             
         }
-        
-        let x = x1;
+        let x      = x1;
         let yMul32 = y * 32;
-        while (x < x2) {
-            let xDiv16 = x / 16;
-            let xRem16 = x - (xDiv16 * 16);                
-            let addr   = scr_ram + yMul32 + xDiv16;            
-            if ( (xRem16 = 0) & ( (x+16) < x2) ) {
-                let in = allbit;
+        let base   = scr_ram + yMul32;
+
+        // first draw
+        let xDiv16 = x / 16;
+        let xRem16 = x - (xDiv16 * 16);                
+        let addr   = base + xDiv16;
+        if (xRem16 = 0) {
+            let in = allbit;
+            let x  = x + 16;
+        } else {
+            let bit = xRem16;
+            if ( (x2 - x1) < 16) {
+                let bitend = bit + (x2 - x1);
             } else {
-                let bit = xRem16;
-                let in  = Memory.peek(addr);
-                // while ( (bit < 16) & ( (x + bit) < (x2 + xRem16) ) ) {                
-                while ( (bit < 16) & ( (x + bit) < x2 ) {                
-                    let in  = Math.setBit(in, bit, val);
-                    let bit = bit + 1;
-                }
+                let bitend = 16;                
+            }
+            let in = Memory.peek(addr);
+            while (bit < bitend) {
+                let in  = Math.setBit(in, bit, val);
+                let bit = bit + 1;
+            }
+            let x = x + (16 - xRem16);
+        }
+        do Memory.poke(addr, in);        
+
+        // draw while x % 16 = 0 & x <= x2
+        let in = allbit;        
+        while ( (x+16) < x2) {
+            let xDiv16 = xDiv16 + 1;
+            let xRem16 = 0; // always 0
+            let addr   = base + xDiv16; // base + xDiv16
+            do Memory.poke(addr, in);        
+            let x = x + 16;
+        }
+
+        // last draw, Case "last x % 16 > 0"
+        if(x < x2) {
+            let bitend = x2 - x; // xRem16
+            let addr   = base + xDiv16 + 1;
+            let bit    = 0;
+            let in     = Memory.peek(addr);
+            while (bit < bitend) {
+                let in  = Math.setBit(in, bit, val);
+                let bit = bit + 1;
             }
             do Memory.poke(addr, in);
-
-            if (xRem16 = 0) {
-                let x = x + 16;
-            } else {
-                let x = x + (16 - xRem16); // if x is indivisible, change to be enable divisible
-            }
         }
+        
         return ;
     }
     
